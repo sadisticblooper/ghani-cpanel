@@ -39,16 +39,16 @@
           <div class="highlight-step">
             <span class="highlight-number">1</span>
             <div>
-              <strong>Investor Request</strong>
-              <p>Submit package capital for review</p>
+              <strong>Choose a Package</strong>
+              <p>Pick your package and number of units</p>
             </div>
           </div>
           <div class="highlight-arrow">→</div>
           <div class="highlight-step">
             <span class="highlight-number">2</span>
             <div>
-              <strong>Admin Approval</strong>
-              <p>Operations confirms placement</p>
+              <strong>Transfer Payment</strong>
+              <p>Send to our bank and provide your account number</p>
             </div>
           </div>
           <div class="highlight-arrow">→</div>
@@ -56,9 +56,12 @@
             <span class="highlight-number">3</span>
             <div>
               <strong>Live Tracking</strong>
-              <p>Profit visible in portal</p>
+              <p>Profit visible in portal once confirmed</p>
             </div>
           </div>
+        </div>
+        <div class="message-card premium-note" style="margin-top:20px;">
+          <strong>How returns work:</strong> Your package capital is a long-term placement and is <strong>not redeemable</strong>. Only the <strong>4% monthly profit</strong> generated on your investment is redeemable — you can withdraw it indefinitely for as long as your package remains active.
         </div>
       </section>
 
@@ -116,15 +119,15 @@
           <section class="control-card strong-card">
             <strong>Package Capital Request</strong>
             <p class="detail-text">
-              Choose how many units of this package you want to place. The request total will match the package amount multiplied by units.
+              Choose how many units of this package you want to place, transfer the exact amount to the account below, then provide the account number you sent from.
             </p>
+            <div class="message-card premium-note" style="margin-bottom:14px;">
+              <strong>Important:</strong> Your package capital is a long-term placement and is <strong>not redeemable</strong>. Only the <strong>4% monthly profit</strong> is redeemable — indefinitely, for as long as your package remains active.
+            </div>
             <form class="form-stack" id="invest-form">
-              <div class="field">
-                <label for="invest-units">Units</label>
-                <input id="invest-units" name="units" type="number" min="1" step="1" value="1">
-              </div>
-              <div class="helper-text" id="invest-estimate"></div>
-              <button class="button primary button-block" type="submit">Submit Investment Request</button>
+              <div class="helper-text" id="invest-estimate">Clicking continue will purchase 1 unit of this package.</div>
+              <div id="bank-details-container"></div>
+              <button class="button primary button-block" type="submit" style="margin-top:14px;">Continue to Purchase →</button>
             </form>
           </section>
 

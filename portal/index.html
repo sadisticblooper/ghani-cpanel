@@ -32,7 +32,6 @@
 
     <main class="page-stack">
 
-      <!-- ── NOT LOGGED IN: Sign-up form ── -->
       <div id="portal-auth">
         <section class="panel detail-banner">
           <div class="kicker">Investor Registration</div>
@@ -94,11 +93,10 @@
         </section>
       </div>
 
-      <!-- ── LOGGED IN: Dashboard ── -->
       <div id="portal-main" style="display:none;">
 
         <div class="dashboard-flat">
-          <!-- Header Row -->
+       
           <div class="dash-row dash-header">
             <div class="dash-welcome">
               <span class="dash-title">Investor Portal</span>
@@ -110,7 +108,7 @@
             </div>
           </div>
 
-          <!-- Metrics Row -->
+
           <div class="dash-row dash-metrics">
             <div class="dash-metric">
               <span class="dash-metric-label">Total Capital</span>
@@ -130,7 +128,6 @@
             </div>
           </div>
 
-          <!-- Holdings Row -->
           <div class="dash-row">
             <div class="dash-section">
               <div class="dash-section-header">
@@ -143,58 +140,22 @@
             </div>
           </div>
 
-          <!-- Requests Row -->
           <div class="dash-row dash-split">
             <div class="dash-section">
               <div class="dash-section-header">
                 <span>Investment Requests</span>
               </div>
-              <div class="dash-table-wrap">
-                <table class="dash-table" id="portal-investment-requests"></table>
-              </div>
+              <div id="portal-investment-requests"></div>
             </div>
             <div class="dash-section">
               <div class="dash-section-header">
                 <span>Withdrawal Requests</span>
               </div>
-              <div class="dash-table-wrap">
-                <table class="dash-table" id="portal-withdrawal-requests"></table>
-              </div>
-            </div>
-            <div class="dash-section">
-              <div class="dash-section-header">
-                <span>Pending Approvals</span>
-              </div>
-              <div class="dash-table-wrap">
-                <table class="dash-table" id="portal-admin-investment-queue"></table>
-                <table class="dash-table" id="portal-admin-withdrawal-queue"></table>
-              </div>
+              <div id="portal-withdrawal-requests"></div>
             </div>
           </div>
 
-          <!-- Actions Row -->
-          <div class="dash-row dash-actions-row">
-            <div class="dash-section">
-              <div class="dash-section-header">
-                <span>Add Capital</span>
-              </div>
-              <form class="dash-form" id="portal-capital-form">
-                <input class="dash-input" id="portal-capital-amount" name="amount" type="number" placeholder="50000">
-                <button class="dash-btn" type="submit">Add</button>
-              </form>
-            </div>
-            <div class="dash-section">
-              <div class="dash-section-header">
-                <span>System</span>
-              </div>
-              <div class="dash-form-btns">
-                <button class="dash-btn dash-btn-sm" id="portal-apply-profit-btn">Apply Profit</button>
-                <button class="dash-btn dash-btn-sm dash-btn-danger" id="portal-reset-btn">Reset</button>
-              </div>
-            </div>
-          </div>
 
-          <!-- Activity Row -->
           <div class="dash-row">
             <div class="dash-section">
               <div class="dash-section-header">

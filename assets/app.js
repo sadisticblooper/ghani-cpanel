@@ -6,15 +6,66 @@
   };
   const PATH_PREFIX = getPathDepth();
 
+  const API_BASE = "https://alsininvestment.com/api";
+
+  // ── Token: localStorage (JWT only, not credentials — safe to persist, expires in 7d)
+  // ── State: in-memory only, fetched fresh from API on every page load ──────────
+  const TOKEN_KEY = "cgi-token";
+
+  const getToken = () => localStorage.getItem(TOKEN_KEY);
+  const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
+  const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+
+  let _cachedState = null;
+  const getCachedState = () => _cachedState ? normaliseState(_cachedState) : null;
+  const setCachedState = (state) => { _cachedState = JSON.parse(JSON.stringify(state)); };
+  const clearCachedState = () => { _cachedState = null; };
+  // ────────────────────────────────────────────────────────────────────────────
+
+  const apiHeaders = () => ({
+    "Content-Type": "application/json",
+    ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+  });
+
+  const fetchStateFromAPI = async () => {
+    if (!getToken()) return null;
+    try {
+      const res = await fetch(`${API_BASE}/user/state`, { headers: apiHeaders() });
+      if (!res.ok) { clearToken(); return null; }
+      const data = await res.json();
+      const state = data.state ? normaliseState(data.state) : null;
+      if (state && state.profile && state.profile.username) {
+        state.profile.isLoggedIn = true;
+      }
+      return state;
+    } catch { return null; }
+  };
+
+  const pushStateToAPI = async (state) => {
+    if (!getToken()) return;
+    try {
+      await fetch(`${API_BASE}/user/state`, {
+        method: "PUT",
+        headers: apiHeaders(),
+        body: JSON.stringify({ state }),
+      });
+    } catch {}
+  };
+
+  let pushTimer = null;
+  const debouncedPush = (state) => {
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => pushStateToAPI(state), 5000);
+  };
+
   const PACKAGE_AMOUNTS = [
     385, 995, 1985, 2995, 3885, 4795, 7785, 11695, 21685, 31695,
     43685, 63695, 83685, 136695, 189685, 289695, 387685, 485695, 1087965, 2085895
   ];
-  const STORAGE_KEY = "cgi-pakistan-investor-portal";
   const MONTHLY_RATIO = 0.04;
   const DAILY_RATIO = MONTHLY_RATIO / 30;
   const PER_SECOND_RATIO = DAILY_RATIO / 86400;
-  const WITHDRAWAL_THRESHOLD = 100;
+  const WITHDRAWAL_THRESHOLD = 200;
   const NUMBER_FORMATTER = new Intl.NumberFormat("en-PK");
   const MONEY_FORMATTER = new Intl.NumberFormat("en-PK", {
     minimumFractionDigits: 2,
@@ -84,8 +135,7 @@
         at: stamp(),
         createdAt: Date.now()
       }
-    ],
-    lastAccrualAt: Date.now()
+    ]
   });
 
   const normaliseProfile = (raw) => {
@@ -111,8 +161,21 @@
       invested: Number.isFinite(safe.invested) ? safe.invested : 0,
       profit: Number.isFinite(safe.profit) ? safe.profit : 0,
       pendingWithdrawal: Number.isFinite(safe.pendingWithdrawal) ? safe.pendingWithdrawal : 0,
-      paidOut: Number.isFinite(safe.paidOut) ? safe.paidOut : 0
+      paidOut: Number.isFinite(safe.paidOut) ? safe.paidOut : 0,
+      approvedAt: Number.isFinite(safe.approvedAt) ? safe.approvedAt : null
     };
+  };
+
+  const normaliseHoldingsMap = (rawHoldings) => {
+    const result = {};
+    if (!rawHoldings) return result;
+    for (const key in rawHoldings) {
+      const pkgId = Number(key);
+      if (pkgId) {
+        result[pkgId] = normaliseHolding(rawHoldings[key]);
+      }
+    }
+    return result;
   };
 
   const normaliseInvestmentRequest = (raw) => {
@@ -177,13 +240,17 @@
                 createdAt: Date.now()
               })
             )
-          : [],
-      lastAccrualAt: Number.isFinite(safe.lastAccrualAt) ? safe.lastAccrualAt : Date.now()
+          : []
     };
 
+    const rawHoldingsMap = normaliseHoldingsMap(safe.holdings);
+    for (const pkgId in rawHoldingsMap) {
+      state.holdings[pkgId] = rawHoldingsMap[pkgId];
+    }
     PACKAGES.forEach((pkg) => {
-      const current = safe.holdings && safe.holdings[pkg.id] ? safe.holdings[pkg.id] : {};
-      state.holdings[pkg.id] = normaliseHolding(current);
+      if (!state.holdings[pkg.id]) {
+        state.holdings[pkg.id] = holdingTemplate();
+      }
     });
 
     if (!state.activities.length) {
@@ -210,16 +277,13 @@
   };
 
   const loadStoredState = () => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? normaliseState(JSON.parse(raw)) : normaliseState(defaultState());
-    } catch (error) {
-      return normaliseState(defaultState());
-    }
+    const cached = getCachedState();
+    return cached || normaliseState(defaultState());
   };
 
   const saveState = (state) => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    setCachedState(state);
+    debouncedPush(state);
   };
 
   const getHolding = (state, packageId) => {
@@ -283,36 +347,7 @@
       }
     );
 
-  const syncElapsedProfit = (state) => {
-    const now = Date.now();
-    const last = Number.isFinite(state.lastAccrualAt) ? state.lastAccrualAt : now;
-    const elapsedSeconds = Math.max(0, (now - last) / 1000);
-
-    if (!elapsedSeconds) {
-      state.lastAccrualAt = now;
-      return false;
-    }
-
-    let changed = false;
-    PACKAGES.forEach((pkg) => {
-      const holding = getHolding(state, pkg.id);
-      if (holding.invested > 0) {
-        holding.profit += holding.invested * PER_SECOND_RATIO * elapsedSeconds;
-        changed = true;
-      }
-    });
-
-    state.lastAccrualAt = now;
-    return changed;
-  };
-
-  const getLiveState = () => {
-    const state = loadStoredState();
-    if (syncElapsedProfit(state)) {
-      saveState(state);
-    }
-    return state;
-  };
+  const getLiveState = () => loadStoredState();
 
   const updateState = (mutator) => {
     const state = getLiveState();
@@ -394,7 +429,6 @@
     `;
   };
 
-  // Flat list for dashboard - show max 10 items with expand button
   const renderActivityFlat = (container, state) => {
     if (!container) {
       return;
@@ -444,9 +478,7 @@
   `;
 
   const renderRequestList = (container, requests, type, options = {}) => {
-    if (!container) {
-      return;
-    }
+    if (!container) return;
 
     if (!requests.length) {
       container.innerHTML = emptyStateCard(
@@ -457,43 +489,28 @@
     }
 
     const sorted = requests.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    container.innerHTML = `
-      <div class="request-grid">
-        ${sorted
-          .map((request) => {
+    const DEFAULT_LIMIT = 2;
+    const limit = options.showAll ? sorted.length : DEFAULT_LIMIT;
+    const visible = sorted.slice(0, limit);
+    const hasMore = sorted.length > DEFAULT_LIMIT;
+
+    const renderCards = (items) => items.map((request) => {
             const pkg = getPackage(request.packageId);
-            const amount = type === "investment" ? request.amount : request.amount;
+            const amount = request.amount;
             const unitRow =
               type === "investment"
-                ? `
-                    <div class="summary-row">
-                      <dt>Units</dt>
-                      <dd>${escapeHtml(String(request.units))}</dd>
-                    </div>
-                  `
+                ? `<div class="summary-row"><dt>Units</dt><dd>${escapeHtml(String(request.units))}</dd></div>`
                 : "";
             const actionButtons =
               options.admin && request.status === "pending"
-                ? `
-                    <div class="button-row request-actions">
-                      <button
-                        class="button primary"
-                        type="button"
+                ? `<div class="button-row request-actions">
+                      <button class="button primary" type="button"
                         data-admin-action="${type === "investment" ? "approve-investment" : "approve-withdrawal"}"
-                        data-request-id="${escapeHtml(request.id)}"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        class="button ghost"
-                        type="button"
+                        data-request-id="${escapeHtml(request.id)}">Approve</button>
+                      <button class="button ghost" type="button"
                         data-admin-action="${type === "investment" ? "decline-investment" : "decline-withdrawal"}"
-                        data-request-id="${escapeHtml(request.id)}"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  `
+                        data-request-id="${escapeHtml(request.id)}">Decline</button>
+                    </div>`
                 : "";
 
             return `
@@ -511,22 +528,25 @@
                     <dd>${escapeHtml(formatMoney(amount))}</dd>
                   </div>
                   ${unitRow}
-                  <div class="summary-row">
-                    <dt>Submitted</dt>
-                    <dd>${escapeHtml(stamp(request.createdAt))}</dd>
-                  </div>
-                  <div class="summary-row">
-                    <dt>Reviewed</dt>
-                    <dd>${escapeHtml(request.reviewedAt ? stamp(request.reviewedAt) : "Awaiting review")}</dd>
-                  </div>
+                  <div class="summary-row"><dt>Submitted</dt><dd>${escapeHtml(stamp(request.createdAt))}</dd></div>
+                  <div class="summary-row"><dt>Reviewed</dt><dd>${escapeHtml(request.reviewedAt ? stamp(request.reviewedAt) : "Awaiting review")}</dd></div>
                 </dl>
                 ${actionButtons}
-              </article>
-            `;
-          })
-          .join("")}
-      </div>
-    `;
+              </article>`;
+          }).join("");
+
+    container.innerHTML = `<div class="request-grid">${renderCards(visible)}</div>`;
+
+    if (hasMore && !options.showAll) {
+      const btn = document.createElement("button");
+      btn.className = "button ghost button-block";
+      btn.style.marginTop = "8px";
+      btn.textContent = `Show all ${sorted.length} requests`;
+      btn.addEventListener("click", () => {
+        renderRequestList(container, requests, type, { ...options, showAll: true });
+      });
+      container.appendChild(btn);
+    }
   };
 
   const activeHoldings = (state) =>
@@ -565,9 +585,54 @@
         `
       )
       .join("");
+
+    const showAllBtn = document.createElement("button");
+    showAllBtn.className = "button ghost button-block";
+    showAllBtn.style.marginTop = "12px";
+    showAllBtn.textContent = "Show All Packages";
+    showAllBtn.onclick = () => showAllPackagesModal(state);
+    container.appendChild(showAllBtn);
   };
 
-  // Flat table format for dashboard
+const showAllPackagesModal = (state) => {
+    const closeModal = () => document.getElementById("packages-modal-overlay")?.remove();
+    const existing = document.getElementById("packages-modal-overlay");
+    if (existing) { existing.remove(); return; }
+    
+    const overlay = document.createElement("div");
+    overlay.id = "packages-modal-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);padding:20px;";
+    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+    
+    overlay.innerHTML = `
+      <div style="background:#13161d;border:1px solid #252a38;border-radius:12px;width:100%;max-width:550px;max-height:85vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #252a38;">
+          <strong style="color:#e8eaf0;font-size:1.1rem;">All Packages</strong>
+          <button style="background:none;border:none;color:#9299ae;font-size:1.8rem;cursor:pointer;line-height:1;" onclick="document.getElementById('packages-modal-overlay').remove()">×</button>
+        </div>
+        <div style="padding:16px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr><th style="color:#5a6178;font-size:0.7rem;text-transform:uppercase;padding:10px 8px;text-align:left;border-bottom:1px solid #252a38;">Package</th><th style="color:#5a6178;font-size:0.7rem;text-transform:uppercase;padding:10px 8px;text-align:left;border-bottom:1px solid #252a38;">Invested</th><th style="color:#5a6178;font-size:0.7rem;text-transform:uppercase;padding:10px 8px;text-align:left;border-bottom:1px solid #252a38;">Profit/Month</th><th style="color:#5a6178;font-size:0.7rem;text-transform:uppercase;padding:10px 8px;text-align:left;border-bottom:1px solid #252a38;">Status</th></tr></thead>
+            <tbody>
+              ${PACKAGES.map(pkg => {
+                const holding = getHolding(state, pkg.id);
+                const monthly = holding.invested > 0 ? holding.invested * 0.04 : pkg.monthlyProfit;
+                const isActive = holding.invested > 0;
+                return `<tr>
+                  <td style="color:#e8eaf0;padding:12px 8px;border-bottom:1px solid #252a38;">${pkg.code}</td>
+                  <td style="color:#e8eaf0;padding:12px 8px;border-bottom:1px solid #252a38;">${isActive ? formatMoney(holding.invested) : "—"}</td>
+                  <td style="color:${isActive ? '#22c55e' : '#e8eaf0'};padding:12px 8px;border-bottom:1px solid #252a38;font-weight:600;">${formatMoney(monthly)}</td>
+                  <td style="color:${isActive ? '#22c55e' : '#5a6178'};padding:12px 8px;border-bottom:1px solid #252a38;">${isActive ? "Active" : "—"}</td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  };
+
   const renderHoldingsFlat = (container, state) => {
     if (!container) {
       return;
@@ -575,23 +640,44 @@
 
     const items = activeHoldings(state);
     if (!items.length) {
-      container.innerHTML = '<tr><td colspan="4" style="color: var(--text-3);">No active packages</td></tr>';
-      return;
+      container.innerHTML = '<tr><td colspan="5" style="color: var(--text-3);">No active packages</td></tr>';
+    } else {
+      container.innerHTML = `<thead><tr><th>Package</th><th>Capital</th><th>Units</th><th>Profit</th><th></th></tr></thead><tbody>` +
+        items
+          .map(({ pkg, holding }) => {
+            const hasPendingWd = state.withdrawalRequests.some(
+              (r) => r.packageId === pkg.id && r.status === "pending"
+            );
+            const canWithdraw = holding.profit >= WITHDRAWAL_THRESHOLD && !hasPendingWd;
+            const btnLabel = hasPendingWd ? "Pending" : "Withdraw";
+            const btnDisabledAttr = canWithdraw ? "" : "disabled";
+            return `
+              <tr>
+                <td>${escapeHtml(pkg.code)}</td>
+                <td>${escapeHtml(formatMoney(holding.invested))}</td>
+                <td>${escapeHtml(String(holding.units))}</td>
+                <td class="profit-cell">${escapeHtml(formatMoney(holding.profit))}</td>
+                <td>
+                  <button class="dash-btn dash-btn-sm" data-withdraw-pkg="${pkg.id}" ${btnDisabledAttr}
+                    style="font-size:0.75rem;padding:5px 12px;${canWithdraw ? "" : "opacity:0.4;cursor:not-allowed;"}">
+                    ${escapeHtml(btnLabel)}
+                  </button>
+                </td>
+              </tr>`;
+          })
+          .join("") + "</tbody>";
     }
 
-    container.innerHTML = `<thead><tr><th>Package</th><th>Capital</th><th>Units</th><th>Profit</th></tr></thead><tbody>` +
-      items
-        .map(
-          ({ pkg, holding }) => `
-          <tr>
-            <td>${escapeHtml(pkg.code)}</td>
-            <td>${escapeHtml(formatMoney(holding.invested))}</td>
-            <td>${escapeHtml(String(holding.units))}</td>
-            <td class="profit-cell">${escapeHtml(formatMoney(holding.profit))}</td>
-          </tr>
-        `
-        )
-        .join("") + "</tbody>";
+    const wrapper = container.closest("div");
+    const existingBtn = wrapper?.querySelector(".show-all-btn");
+    if (!existingBtn) {
+      const btn = document.createElement("button");
+      btn.className = "button ghost show-all-btn";
+      btn.style.marginTop = "12px";
+      btn.textContent = "Show All Packages";
+      btn.onclick = () => showAllPackagesModal(state);
+      if (wrapper) wrapper.appendChild(btn);
+    }
   };
 
   const renderPackageGrid = (state, container, options = {}) => {
@@ -638,7 +724,8 @@
               </div>
             </dl>
             <div class="button-row" style="margin-top: 14px;">
-              <a class="button-link primary" href="${escapeHtml(packageHref(pkg))}">Review Package</a>
+              <a class="button-link primary" href="${escapeHtml(`${PATH_PREFIX}buy/?id=${pkg.id}`)}">Buy</a>
+              <a class="button-link ghost" href="${escapeHtml(packageHref(pkg))}">Details</a>
             </div>
           </article>
         `;
@@ -728,7 +815,7 @@
   const validateEmail = (value) => /\S+@\S+\.\S+/.test(String(value || "").trim());
   const cleanPhone = (value) => String(value || "").replace(/[^\d+]/g, "");
 
-  const saveProfile = ({ username, phone, email, password }) => {
+  const saveProfile = async ({ username, phone, email, password }) => {
     const cleanUsername = String(username || "").trim();
     const cleanPhoneValue = cleanPhone(phone);
     const cleanEmail = String(email || "").trim();
@@ -747,27 +834,67 @@
       return { ok: false, tone: "danger", message: "Create a password to complete the investor account." };
     }
 
-    const { state } = updateState((draft) => {
-      const currentId = draft.profile.memberId || `CGI-PK-${Date.now().toString().slice(-6)}`;
-      const joinedAt = draft.profile.joinedAt || Date.now();
-      draft.profile = {
-        username: cleanUsername,
-        phone: cleanPhoneValue,
-        email: cleanEmail,
-        password: cleanPassword,
-        memberId: currentId,
-        joinedAt,
-        isLoggedIn: true
-      };
-      addActivity(draft, `${cleanUsername} completed investor registration and entered the portal.`, "success");
-    });
+    try {
+      let registerRes = await fetch(`${API_BASE}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: cleanUsername, email: cleanEmail, password: cleanPassword, phone: cleanPhoneValue }),
+      });
 
-    return {
-      ok: true,
-      tone: "success",
-      message: `${cleanUsername} is now active in the CGI Pakistan investor portal.`,
-      state
-    };
+      if (!registerRes.ok && registerRes.status !== 409) {
+        const err = await registerRes.json().catch(() => ({}));
+        return { ok: false, tone: "danger", message: err.error || "Registration failed. Please try again." };
+      }
+
+      const loginRes = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+      });
+
+      if (!loginRes.ok) {
+        const err = await loginRes.json().catch(() => ({}));
+        return { ok: false, tone: "danger", message: err.error || "Login failed. Check your credentials." };
+      }
+
+      const loginData = await loginRes.json();
+      setToken(loginData.token);
+
+      const apiState = await fetchStateFromAPI();
+
+      let finalState;
+      if (apiState && apiState.profile && apiState.profile.username) {
+        finalState = apiState;
+        finalState.profile.isLoggedIn = true;
+        finalState.profile.phone = cleanPhoneValue;
+        saveState(finalState);
+      } else {
+        const { state } = updateState((draft) => {
+          draft.profile = {
+            username: loginData.user.username,
+            phone: cleanPhoneValue,
+            email: loginData.user.email,
+            password: "",
+            memberId: loginData.user.memberId || `CGI-PK-${Date.now().toString().slice(-6)}`,
+            joinedAt: loginData.user.joinedAt || Date.now(),
+            isLoggedIn: true
+          };
+          draft.availableBalance = parseFloat(loginData.user.credits) || 0;
+          addActivity(draft, `${loginData.user.username} completed investor registration and entered the portal.`, "success");
+        });
+        finalState = state;
+        await pushStateToAPI(finalState);
+      }
+
+      return {
+        ok: true,
+        tone: "success",
+        message: `${cleanUsername} is now active in the CGI Pakistan investor portal.`,
+        state: finalState
+      };
+    } catch (err) {
+      return { ok: false, tone: "danger", message: "Network error. Please check your connection and try again." };
+    }
   };
 
   const logoutProfile = () => {
@@ -777,20 +904,25 @@
     }
 
     const investorName = current.profile.username;
-    const { state } = updateState((draft) => {
-      draft.profile.isLoggedIn = false;
-      addActivity(draft, `${investorName} signed out of the investor portal.`, "warning");
-    });
+
+    clearTimeout(pushTimer);
+    pushStateToAPI(current);
+
+    clearToken();
+    clearCachedState();
+
+    const fresh = normaliseState(defaultState());
+    setCachedState(fresh);
 
     return {
       ok: true,
       tone: "success",
       message: `${investorName} has been signed out.`,
-      state
+      state: fresh
     };
   };
 
-  const submitInvestmentRequest = (packageId, units) => {
+  const submitInvestmentRequest = (packageId, units, senderAccountNumber, proofBase64 = null) => {
     const pkg = getPackage(packageId);
     const parsedUnits = Number(units);
 
@@ -806,6 +938,10 @@
       return { ok: false, tone: "warning", message: "Complete investor registration or sign in before requesting a package." };
     }
 
+    if (!senderAccountNumber || !senderAccountNumber.trim()) {
+      return { ok: false, tone: "warning", message: "Please enter the account number you sent the payment from." };
+    }
+
     const total = pkg.amount * parsedUnits;
 
     const result = updateState((draft) => {
@@ -815,6 +951,8 @@
         units: parsedUnits,
         amount: total,
         status: "pending",
+        senderAccountNumber: senderAccountNumber.trim(),
+        proofOfPayment: proofBase64 || null,
         createdAt: Date.now(),
         reviewedAt: null
       });
@@ -825,10 +963,29 @@
       );
     });
 
+    // Immediately flush state to API (don't wait for debounce — user may navigate away)
+    pushStateToAPI(result.state);
+
+    // Also push to backend investment_requests table
+    if (getToken()) {
+      fetch(`${API_BASE}/investments`, {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          packageId: pkg.id,
+          packageCode: pkg.code,
+          units: parsedUnits,
+          amount: total,
+          senderAccountNumber: senderAccountNumber.trim(),
+          proofOfPayment: proofBase64 || null
+        })
+      }).catch(() => {});
+    }
+
     return {
       ok: true,
       tone: "success",
-      message: `${pkg.code} request submitted for ${formatAmount(total)} and sent to operations for approval.`,
+      message: `${pkg.code} request submitted for ${formatAmount(total)}. Operations will confirm your payment shortly.`,
       state: result.state
     };
   };
@@ -839,13 +996,9 @@
       if (!request || request.status !== "pending") {
         return { ok: false, message: "That investment request is no longer awaiting approval." };
       }
-      if (draft.availableBalance < request.amount) {
-        return { ok: false, message: "Available capital is too low to approve this package request." };
-      }
 
       const pkg = getPackage(request.packageId);
       const holding = getHolding(draft, request.packageId);
-      draft.availableBalance -= request.amount;
       holding.units += request.units;
       holding.invested += request.amount;
       request.status = "approved";
@@ -877,7 +1030,7 @@
     return { ok, tone: ok ? "success" : "warning", message, state };
   };
 
-  const requestWithdrawal = (packageId) => {
+  const requestWithdrawal = async (packageId, requestedAmount, bankName, accountTitle, accountNumber) => {
     const pkg = getPackage(packageId);
     if (!pkg) {
       return { ok: false, tone: "danger", message: "This package could not be found." };
@@ -888,12 +1041,26 @@
       return { ok: false, tone: "warning", message: "Sign in before requesting a withdrawal." };
     }
 
+    if (!getToken()) {
+      return { ok: false, tone: "warning", message: "Session expired. Please sign in again." };
+    }
+
     const holding = getHolding(state, pkg.id);
-    if (holding.profit < WITHDRAWAL_THRESHOLD) {
+    const amount = Number(requestedAmount);
+
+    if (!Number.isFinite(amount) || amount < WITHDRAWAL_THRESHOLD) {
       return {
         ok: false,
         tone: "warning",
-        message: `Profit must reach at least ${formatAmount(WITHDRAWAL_THRESHOLD)} before a withdrawal request can be submitted.`
+        message: `Minimum withdrawal amount is ${formatAmount(WITHDRAWAL_THRESHOLD)}.`
+      };
+    }
+
+    if (amount > holding.profit) {
+      return {
+        ok: false,
+        tone: "warning",
+        message: `Cannot exceed available profit of ${formatMoney(holding.profit)}.`
       };
     }
 
@@ -902,28 +1069,54 @@
       return { ok: false, tone: "warning", message: `${pkg.code} already has a withdrawal request awaiting review.` };
     }
 
-    const result = updateState((draft) => {
-      const currentHolding = getHolding(draft, pkg.id);
-      const amount = currentHolding.profit;
-      currentHolding.profit = 0;
-      currentHolding.pendingWithdrawal += amount;
-      draft.withdrawalRequests.unshift({
-        id: createId("WDR"),
-        packageId: pkg.id,
-        amount,
-        status: "pending",
-        createdAt: Date.now(),
-        reviewedAt: null
+    try {
+      const res = await fetch(`${API_BASE}/withdrawals`, {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          packageId: pkg.id,
+          packageCode: pkg.code,
+          amount,
+          bankName,
+          accountTitle,
+          accountNumber
+        })
       });
-      addActivity(draft, `${draft.profile.username} requested withdrawal from ${pkg.code} for ${formatMoney(amount)}.`, "warning");
-    });
 
-    return {
-      ok: true,
-      tone: "success",
-      message: `${pkg.code} withdrawal request was sent to operations for approval.`,
-      state: result.state
-    };
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { ok: false, tone: "danger", message: err.error || "Failed to submit withdrawal request." };
+      }
+
+      const data = await res.json();
+      const withdrawalId = data.id;
+
+      const result = updateState((draft) => {
+        const currentHolding = getHolding(draft, pkg.id);
+        currentHolding.profit = Math.max(0, currentHolding.profit - amount);
+        currentHolding.pendingWithdrawal += amount;
+        draft.withdrawalRequests.unshift({
+          id: withdrawalId,
+          packageId: pkg.id,
+          amount,
+          status: "pending",
+          createdAt: Date.now(),
+          reviewedAt: null
+        });
+        addActivity(draft, `${draft.profile.username} requested withdrawal of ${formatMoney(amount)} from ${pkg.code}.`, "warning");
+      });
+
+      pushStateToAPI(result.state);
+
+      return {
+        ok: true,
+        tone: "success",
+        message: `${pkg.code} withdrawal request of ${formatMoney(amount)} was sent to admin for approval.`,
+        state: result.state
+      };
+    } catch {
+      return { ok: false, tone: "danger", message: "Network error. Please try again." };
+    }
   };
 
   const approveWithdrawalRequest = (requestId) => {
@@ -1015,8 +1208,10 @@
   };
 
   const resetPortal = () => {
+    clearToken();
+    clearCachedState();
     const fresh = normaliseState(defaultState());
-    saveState(fresh);
+    setCachedState(fresh);
     return {
       ok: true,
       tone: "success",
@@ -1107,23 +1302,6 @@
   const refreshLogin = (feedbackMessage, tone) => {
     const state = getLiveState();
     updateTopbarState(state);
-
-    const username = document.getElementById("username");
-    const phone = document.getElementById("phone");
-    const email = document.getElementById("email");
-    const password = document.getElementById("password");
-    if (username) {
-      username.value = state.profile.username;
-    }
-    if (phone) {
-      phone.value = state.profile.phone;
-    }
-    if (email) {
-      email.value = state.profile.email;
-    }
-    if (password) {
-      password.value = state.profile.password;
-    }
 
     const submitButton = document.getElementById("auth-submit-btn");
     if (submitButton) {
@@ -1417,15 +1595,18 @@
   const bindAuthControls = () => {
     const form = document.getElementById("auth-form");
     if (form) {
-      form.addEventListener("submit", (event) => {
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        const submitBtn = document.getElementById("auth-submit-btn");
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Please wait..."; }
         const data = new FormData(form);
-        const result = saveProfile({
+        const result = await saveProfile({
           username: data.get("username"),
           phone: data.get("phone"),
           email: data.get("email"),
           password: data.get("password")
         });
+        if (submitBtn) { submitBtn.disabled = false; }
         if (!result.ok) {
           refreshLogin(result.message, result.tone);
           return;
@@ -1444,28 +1625,26 @@
   };
 
   const bindPackageControls = (packageId) => {
+    // The invest form on the detail page still works for logged-in users who navigate here directly
     const form = document.getElementById("invest-form");
     if (form) {
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        const units = Number(new FormData(form).get("units"));
-        const result = submitInvestmentRequest(packageId, units);
-        refreshPackage(packageId, result.message, result.tone);
+        // Redirect to buy page instead
+        window.location.href = `${PATH_PREFIX}buy/?id=${packageId}`;
       });
     }
 
     const unitsInput = document.getElementById("invest-units");
     if (unitsInput) {
-      unitsInput.addEventListener("input", () => {
-        refreshPackage(packageId);
-      });
+      unitsInput.addEventListener("input", () => refreshPackage(packageId));
     }
 
     const withdrawButton = document.getElementById("request-withdrawal-btn");
     if (withdrawButton) {
       withdrawButton.addEventListener("click", () => {
-        const result = requestWithdrawal(packageId);
-        refreshPackage(packageId, result.message, result.tone);
+        const state = getLiveState();
+        showWithdrawModal(packageId, state);
       });
     }
   };
@@ -1532,11 +1711,12 @@
 
   const startLiveRefresh = (refresh) => {
     window.setInterval(() => {
-      refresh();
+      const active = document.activeElement;
+      const userIsTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT");
+      if (!userIsTyping) refresh();
     }, 1000);
   };
 
-  // ── Portal page: combined signup + dashboard + admin ──────────────────────
   const refreshPortal = (feedbackMessage, tone) => {
     const state = getLiveState();
     const totals = summary(state);
@@ -1552,13 +1732,6 @@
     mainSection.style.display = loggedIn ? "" : "none";
 
     if (!loggedIn) {
-      // Pre-fill form fields if partial data exists
-      const fill = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-      fill("username", state.profile.username);
-      fill("phone", state.profile.phone);
-      fill("email", state.profile.email);
-      fill("password", state.profile.password);
-
       renderSummaryList(document.getElementById("portal-profile-summary-auth"), [
         { label: "Investor Name", value: state.profile.username || "Not registered yet" },
         { label: "Phone Number", value: state.profile.phone || "Awaiting registration" },
@@ -1579,11 +1752,9 @@
       return;
     }
 
-    // Logged in — render full dashboard + admin
     const welcomeName = document.getElementById("portal-welcome-name");
     if (welcomeName) welcomeName.textContent = state.profile.username;
 
-    // Update flat dashboard metrics
     const mTotalCapital = document.getElementById("metric-total-capital");
     const mTotalProfit = document.getElementById("metric-total-profit");
     const mAvailable = document.getElementById("metric-available");
@@ -1625,9 +1796,8 @@
       { label: "Joined", value: state.profile.joinedAt ? stamp(state.profile.joinedAt) : "—" }
     ]);
 
-renderHoldingsFlat(document.getElementById("portal-holdings"), state);
+    renderHoldingsFlat(document.getElementById("portal-holdings"), state);
 
-    // Investor view — all requests with status (card format)
     renderRequestList(
       document.getElementById("portal-investment-requests"),
       state.investmentRequests,
@@ -1647,28 +1817,6 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
       }
     );
 
-    // Admin approval queues — pending only, with approve/decline buttons
-    renderRequestList(
-      document.getElementById("portal-admin-investment-queue"),
-      state.investmentRequests.filter((item) => item.status === "pending"),
-      "investment",
-      {
-        admin: true,
-        emptyTitle: "Investment queue is clear",
-        emptyText: "Pending package requests will appear here when submitted."
-      }
-    );
-    renderRequestList(
-      document.getElementById("portal-admin-withdrawal-queue"),
-      state.withdrawalRequests.filter((item) => item.status === "pending"),
-      "withdrawal",
-      {
-        admin: true,
-        emptyTitle: "Withdrawal queue is clear",
-        emptyText: "Pending withdrawal requests will appear here when submitted."
-      }
-    );
-
     renderActivityFlat(document.getElementById("portal-activity-feed"), state, 10);
 
     if (feedbackMessage) {
@@ -1676,24 +1824,131 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
     }
   };
 
-  const bindPortalControls = () => {
-    // Sign-up form
+  const showWithdrawModal = (packageId, state) => {
+    const pkg = getPackage(packageId);
+    if (!pkg) return;
+    const holding = getHolding(state, pkg.id);
+    const maxAmount = holding.profit;
+
+    const existing = document.getElementById("withdraw-modal-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "withdraw-modal-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);padding:20px;";
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = `
+      <div style="display:block;background:var(--surface,#13161d);border:1px solid var(--border,#252a38);border-radius:12px;width:100%;max-width:420px;padding:28px;box-sizing:border-box;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <strong style="font-size:1.05rem;color:var(--text,#e8eaf0);">Withdraw from ${escapeHtml(pkg.code)}</strong>
+          <button id="withdraw-modal-close" style="background:none;border:none;color:var(--text-2,#9299ae);font-size:1.6rem;cursor:pointer;line-height:1;padding:0;">×</button>
+        </div>
+
+        <p style="display:block;color:var(--text-2,#9299ae);font-size:0.84rem;margin:0 0 4px 0;">Available profit</p>
+        <p style="display:block;color:var(--text,#e8eaf0);font-size:1.3rem;font-weight:700;margin:0 0 20px 0;">${escapeHtml(formatMoney(maxAmount))}</p>
+
+        <p style="display:block;font-size:0.78rem;color:var(--text-2,#9299ae);margin:0 0 6px 0;letter-spacing:0.05em;text-transform:uppercase;">Amount (PKR)</p>
+        <input id="withdraw-amount-input" type="number" min="200" max="${maxAmount.toFixed(2)}" step="1" placeholder="Min PKR 200"
+          style="display:block;width:100%;box-sizing:border-box;padding:10px 14px;background:var(--surface-2,#1a1e28);border:1px solid var(--border-2,#2e3447);border-radius:8px;color:var(--text,#e8eaf0);font-size:0.95rem;outline:none;margin-bottom:6px;">
+        <p style="display:block;font-size:0.75rem;color:var(--text-3,#5a6178);margin:0 0 22px 0;">Min PKR 200 · Max ${escapeHtml(formatMoney(maxAmount))}</p>
+
+        <hr style="border:none;border-top:1px solid var(--border,#252a38);margin:0 0 18px 0;">
+
+        <p style="display:block;font-size:0.8rem;color:var(--text-2,#9299ae);margin:0 0 14px 0;font-weight:500;">Bank account to receive payment</p>
+
+        <p style="display:block;font-size:0.75rem;color:var(--text-2,#9299ae);margin:0 0 5px 0;text-transform:uppercase;letter-spacing:0.05em;">Bank Name</p>
+        <input id="withdraw-bank-name" type="text" placeholder="e.g. Meezan Bank, HBL, UBL"
+          style="display:block;width:100%;box-sizing:border-box;padding:10px 14px;background:var(--surface-2,#1a1e28);border:1px solid var(--border-2,#2e3447);border-radius:8px;color:var(--text,#e8eaf0);font-size:0.88rem;outline:none;margin-bottom:12px;">
+
+        <p style="display:block;font-size:0.75rem;color:var(--text-2,#9299ae);margin:0 0 5px 0;text-transform:uppercase;letter-spacing:0.05em;">Account Title</p>
+        <input id="withdraw-account-title" type="text" placeholder="Full name on account"
+          style="display:block;width:100%;box-sizing:border-box;padding:10px 14px;background:var(--surface-2,#1a1e28);border:1px solid var(--border-2,#2e3447);border-radius:8px;color:var(--text,#e8eaf0);font-size:0.88rem;outline:none;margin-bottom:12px;">
+
+        <p style="display:block;font-size:0.75rem;color:var(--text-2,#9299ae);margin:0 0 5px 0;text-transform:uppercase;letter-spacing:0.05em;">Account Number / IBAN</p>
+        <input id="withdraw-account-number" type="text" placeholder="Account number or IBAN"
+          style="display:block;width:100%;box-sizing:border-box;padding:10px 14px;background:var(--surface-2,#1a1e28);border:1px solid var(--border-2,#2e3447);border-radius:8px;color:var(--text,#e8eaf0);font-size:0.88rem;outline:none;margin-bottom:20px;">
+
+        <p id="withdraw-modal-feedback" style="display:block;font-size:0.8rem;min-height:16px;margin:0 0 12px 0;color:var(--red,#ef4444);"></p>
+        <button id="withdraw-modal-submit" style="display:block;width:100%;padding:12px;background:var(--accent,#4f6ef7);color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">
+          Submit Withdrawal Request
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById("withdraw-modal-close").onclick = () => overlay.remove();
+
+    document.getElementById("withdraw-modal-submit").onclick = async () => {
+      const input = document.getElementById("withdraw-amount-input");
+      const bankName = document.getElementById("withdraw-bank-name").value.trim();
+      const accountTitle = document.getElementById("withdraw-account-title").value.trim();
+      const accountNumber = document.getElementById("withdraw-account-number").value.trim();
+      const amount = parseFloat(input.value);
+      const fb = document.getElementById("withdraw-modal-feedback");
+      const btn = document.getElementById("withdraw-modal-submit");
+
+      fb.textContent = "";
+
+      if (!Number.isFinite(amount) || amount < 200) {
+        fb.textContent = "Minimum withdrawal amount is PKR 200.";
+        return;
+      }
+      if (amount > maxAmount) {
+        fb.textContent = `Cannot exceed available profit of ${formatMoney(maxAmount)}.`;
+        return;
+      }
+      if (!bankName) {
+        fb.textContent = "Please enter your bank name.";
+        return;
+      }
+      if (!accountTitle) {
+        fb.textContent = "Please enter the account title.";
+        return;
+      }
+      if (!accountNumber) {
+        fb.textContent = "Please enter your account number or IBAN.";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Submitting...";
+      btn.style.opacity = "0.6";
+
+      const result = await requestWithdrawal(packageId, amount, bankName, accountTitle, accountNumber);
+
+      if (result.ok) {
+        overlay.remove();
+        refreshPortal(result.message, result.tone);
+      } else {
+        btn.disabled = false;
+        btn.textContent = "Submit Withdrawal Request";
+        btn.style.opacity = "1";
+        fb.textContent = result.message;
+      }
+    };
+  };
+
+  
     const authForm = document.getElementById("auth-form");
     if (authForm) {
-      authForm.addEventListener("submit", (event) => {
+      authForm.addEventListener("submit", async (event) => {
         event.preventDefault();
+        const submitBtn = authForm.querySelector("button[type=submit]");
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Please wait..."; }
         const data = new FormData(authForm);
-        const result = saveProfile({
+        const result = await saveProfile({
           username: data.get("username"),
           phone: data.get("phone"),
           email: data.get("email"),
           password: data.get("password")
         });
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create Investor Account"; }
         refreshPortal(result.message, result.tone);
       });
     }
 
-    // Logout
     const logoutBtn = document.getElementById("logout-btn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", () => {
@@ -1702,54 +1957,42 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
       });
     }
 
-    // Admin: approve capital
-    const capitalForm = document.getElementById("portal-capital-form");
-    if (capitalForm) {
-      capitalForm.addEventListener("submit", (event) => {
+  const bindPortalControls = () => {
+    const authForm = document.getElementById("auth-form");
+    if (authForm) {
+      authForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const amount = Number(new FormData(capitalForm).get("amount"));
-        const result = addApprovedCapital(amount);
-        refreshPortal(result.message, result.tone);
-        if (result.ok) capitalForm.reset();
-      });
-    }
-
-    // Admin: apply 1 day profit
-    const applyProfitBtn = document.getElementById("portal-apply-profit-btn");
-    if (applyProfitBtn) {
-      applyProfitBtn.addEventListener("click", () => {
-        const result = applyDailyProfit();
+        const submitBtn = authForm.querySelector("button[type=submit]");
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Please wait..."; }
+        const data = new FormData(authForm);
+        const result = await saveProfile({
+          username: data.get("username"),
+          phone: data.get("phone"),
+          email: data.get("email"),
+          password: data.get("password")
+        });
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create Investor Account"; }
         refreshPortal(result.message, result.tone);
       });
     }
 
-    // Admin: reset portal
-    const resetBtn = document.getElementById("portal-reset-btn");
-    if (resetBtn) {
-      resetBtn.addEventListener("click", () => {
-        const confirmed = window.confirm("Reset investor registration, capital approvals, package activity, and withdrawal history?");
-        if (!confirmed) return;
-        const result = resetPortal();
+    const logoutBtn = document.getElementById("logout-btn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", () => {
+        const result = logoutProfile();
         refreshPortal(result.message, result.tone);
       });
     }
 
-    // Admin: approve/decline investment & withdrawal via data-admin-action
     document.addEventListener("click", (event) => {
-      const trigger = event.target.closest("[data-admin-action]");
-      if (!trigger) return;
-      const action = trigger.dataset.adminAction;
-      const requestId = trigger.dataset.requestId;
-      let result = null;
-      if (action === "approve-investment") result = approveInvestmentRequest(requestId);
-      else if (action === "decline-investment") result = declineInvestmentRequest(requestId);
-      else if (action === "approve-withdrawal") result = approveWithdrawalRequest(requestId);
-      else if (action === "decline-withdrawal") result = declineWithdrawalRequest(requestId);
-      if (result) refreshPortal(result.message, result.tone);
-    });
+      const withdrawBtn = event.target.closest("[data-withdraw-pkg]");
+      if (withdrawBtn && !withdrawBtn.disabled) {
+        const pkgId = Number(withdrawBtn.dataset.withdrawPkg);
+        const state = getLiveState();
+        showWithdrawModal(pkgId, state);
+        return;
+      }
 
-    // Activity show more
-    document.addEventListener("click", (event) => {
       const trigger = event.target.closest("[data-show-more]");
       if (!trigger) return;
       const activityContainer = document.getElementById("portal-activity-feed");
@@ -1760,7 +2003,171 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
     });
   };
 
-  window.addEventListener("DOMContentLoaded", () => {
+  const BANK_DETAILS = {
+    bankName: "Meezan Bank",
+    accountTitle: "CGI Pakistan Investments",
+    accountNumber: "0123456789",
+    iban: "PK36MEZN0001230123456789"
+  };
+
+  const refreshBuy = (pkg) => {
+    const state = getLiveState();
+    const authWall = document.getElementById("buy-auth-wall");
+    const buyMain = document.getElementById("buy-main");
+    if (!authWall || !buyMain) return;
+
+    if (!isLoggedIn(state)) {
+      authWall.style.display = "";
+      buyMain.style.display = "none";
+      return;
+    }
+
+    authWall.style.display = "none";
+    buyMain.style.display = "";
+
+    const titleEl = document.getElementById("buy-title");
+    if (titleEl) titleEl.innerHTML = `${escapeHtml(pkg.code)} <span>Purchase</span>`;
+
+    const metricsEl = document.getElementById("buy-metrics");
+    if (metricsEl) {
+      metricsEl.innerHTML = `
+        <div class="detail-metric"><span class="stat-label">Package Amount</span><strong>${escapeHtml(formatAmount(pkg.amount))}</strong></div>
+        <div class="detail-metric"><span class="stat-label">Monthly Return (4%)</span><strong>${escapeHtml(formatMoney(pkg.monthlyProfit))}</strong></div>
+        <div class="detail-metric"><span class="stat-label">Daily Return</span><strong>${escapeHtml(formatMoney(pkg.dailyProfit))}</strong></div>
+      `;
+    }
+  };
+
+  const bindBuyControls = (pkg) => {
+    let currentUnits = 1;
+    let proofBase64 = null;
+
+    const showStep = (stepId) => {
+      ["buy-step-units", "buy-step-payment", "buy-step-proof", "buy-step-success"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === stepId ? "" : "none";
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const updateUnitsSummary = () => {
+      const total = pkg.amount * currentUnits;
+      const summaryEl = document.getElementById("buy-units-summary");
+      if (summaryEl) {
+        summaryEl.innerHTML = `
+          <strong>${currentUnits} unit${currentUnits === 1 ? "" : "s"} of ${escapeHtml(pkg.code)}</strong>
+          <p>Total to transfer: <strong>${escapeHtml(formatAmount(total))}</strong> &nbsp;|&nbsp; Est. monthly return: ${escapeHtml(formatMoney(pkg.monthlyProfit * currentUnits))}</p>
+        `;
+      }
+    };
+
+    const unitsInput = document.getElementById("buy-units");
+    if (unitsInput) {
+      unitsInput.addEventListener("input", () => {
+        currentUnits = Math.max(1, parseInt(unitsInput.value, 10) || 1);
+        updateUnitsSummary();
+      });
+      updateUnitsSummary();
+    }
+
+    // Step 1 → Step 2
+    const nextToPayment = document.getElementById("buy-next-to-payment");
+    if (nextToPayment) {
+      nextToPayment.addEventListener("click", () => {
+        currentUnits = Math.max(1, parseInt(unitsInput?.value, 10) || 1);
+        const total = pkg.amount * currentUnits;
+
+        const reminderEl = document.getElementById("buy-amount-reminder");
+        if (reminderEl) {
+          reminderEl.innerHTML = `<strong>Amount to transfer: ${escapeHtml(formatAmount(total))}</strong><p>Send exactly this amount so operations can match your receipt to this order.</p>`;
+        }
+
+        const bankEl = document.getElementById("buy-bank-details");
+        if (bankEl) {
+          bankEl.innerHTML = `
+            <article class="info-card"><span class="info-label">Bank</span><strong class="info-value">${escapeHtml(BANK_DETAILS.bankName)}</strong></article>
+            <article class="info-card"><span class="info-label">Account Title</span><strong class="info-value">${escapeHtml(BANK_DETAILS.accountTitle)}</strong></article>
+            <article class="info-card"><span class="info-label">Account Number</span><strong class="info-value">${escapeHtml(BANK_DETAILS.accountNumber)}</strong></article>
+            <article class="info-card"><span class="info-label">IBAN</span><strong class="info-value">${escapeHtml(BANK_DETAILS.iban)}</strong></article>
+          `;
+        }
+
+        showStep("buy-step-payment");
+      });
+    }
+
+    // Step 2 → back to Step 1
+    const backToUnits = document.getElementById("buy-back-to-units");
+    if (backToUnits) backToUnits.addEventListener("click", () => showStep("buy-step-units"));
+
+    // Step 2 → Step 3
+    const nextToProof = document.getElementById("buy-next-to-proof");
+    if (nextToProof) nextToProof.addEventListener("click", () => showStep("buy-step-proof"));
+
+    // Step 3 → back to Step 2
+    const backToPayment = document.getElementById("buy-back-to-payment");
+    if (backToPayment) backToPayment.addEventListener("click", () => showStep("buy-step-payment"));
+
+    // Proof image — placeholder, base64 captured but not validated
+    const proofInput = document.getElementById("buy-proof-input");
+    if (proofInput) {
+      proofInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) { proofBase64 = null; return; }
+        const reader = new FileReader();
+        reader.onload = (ev) => { proofBase64 = ev.target.result; };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Submit
+    const submitBtn = document.getElementById("buy-submit-btn");
+    const feedbackEl = document.getElementById("buy-feedback");
+    if (submitBtn) {
+      submitBtn.addEventListener("click", async () => {
+        const accountInput = document.getElementById("buy-sender-account");
+        const senderAccountNumber = accountInput ? accountInput.value.trim() : "";
+
+        if (!senderAccountNumber) {
+          if (feedbackEl) { feedbackEl.textContent = "Please enter the account number you sent the payment from."; feedbackEl.className = "feedback warning"; }
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+
+        const result = submitInvestmentRequest(pkg.id, currentUnits, senderAccountNumber, proofBase64);
+
+        if (result.ok) {
+          // Wait for state to actually reach the server before navigating
+          try { await pushStateToAPI(result.state); } catch {}
+          showStep("buy-step-success");
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Purchase Request";
+          if (feedbackEl) { feedbackEl.textContent = result.message; feedbackEl.className = `feedback ${result.tone}`; }
+        }
+      });
+    }
+  };
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    // Flush any pending state on page unload
+    window.addEventListener("beforeunload", () => {
+      if (pushTimer) {
+        clearTimeout(pushTimer);
+        const state = getLiveState();
+        // Use sendBeacon for reliability on unload
+        const token = getToken();
+        if (token) {
+          navigator.sendBeacon(
+            `${API_BASE}/user/state`,
+            new Blob([JSON.stringify({ state })], { type: "application/json" })
+          );
+        }
+      }
+    });
+
     const pageType = document.body.dataset.page;
 
     if (pageType === "package") {
@@ -1769,6 +2176,11 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
         window.location.href = `${PATH_PREFIX}packages/?id=${packageId}`;
       }
       return;
+    }
+
+    const apiState = await fetchStateFromAPI();
+    if (apiState) {
+      setCachedState(apiState);
     }
 
     if (pageType === "home") {
@@ -1784,6 +2196,19 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
         refreshPackage(pkgId);
         bindPackageControls(pkgId);
         startLiveRefresh(() => refreshPackage(pkgId));
+
+        // If ?buy=1, scroll straight to the invest form and flash it
+        if (params.get("buy") === "1") {
+          setTimeout(() => {
+            const investSection = document.getElementById("listing-actions");
+            if (investSection) {
+              investSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              investSection.style.transition = "box-shadow 0.3s ease";
+              investSection.style.boxShadow = "0 0 0 3px var(--accent, #4f8ef7)";
+              setTimeout(() => { investSection.style.boxShadow = ""; }, 1800);
+            }
+          }, 200);
+        }
       } else {
         refreshPackagesPage();
         startLiveRefresh(() => refreshPackagesPage());
@@ -1791,12 +2216,28 @@ renderHoldingsFlat(document.getElementById("portal-holdings"), state);
     }
 
     if (pageType === "portal") {
-      refreshPortal();
+      fetchStateFromAPI().then(apiState => {
+        if (apiState) setCachedState(apiState);
+        refreshPortal();
+      }).catch(() => refreshPortal());
       bindPortalControls();
-      startLiveRefresh(() => refreshPortal());
+
+      setInterval(async () => {
+        const fresh = await fetchStateFromAPI();
+        if (fresh) {
+          setCachedState(fresh);
+          refreshPortal();
+        }
+      }, 30000);
     }
 
-    // Legacy pages kept for backward compat in case someone has them bookmarked
+    if (pageType === "buy") {
+      const params = new URLSearchParams(window.location.search);
+      const pkg = getPackage(params.get("id")) || PACKAGES[0];
+      refreshBuy(pkg);
+      bindBuyControls(pkg);
+    }
+
     if (pageType === "login") {
       window.location.href = `${PATH_PREFIX}portal/`;
     }

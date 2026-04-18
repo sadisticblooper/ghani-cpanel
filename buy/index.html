@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CGI Pakistan | Buy Package</title>
+  <meta name="description" content="Purchase a CGI Pakistan investment package.">
+  <link rel="icon" type="image/png" href="../assets/cgi-logo.png">
+  <link rel="apple-touch-icon" href="../assets/cgi-logo.png">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="buy">
+  <img class="ui-bg" src="../assets/ui-bg.svg" alt="">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="../index.html">
+        <img src="../assets/cgi-logo.png" alt="CGI logo">
+        <div>
+          <span class="brand-title">CGI Pakistan</span>
+          <span class="brand-subtitle">Canadian General Investments</span>
+        </div>
+      </a>
+      <div class="topbar-right">
+        <nav class="site-nav" aria-label="Primary">
+          <a class="nav-link" data-nav-link="home" href="../index.html">Home</a>
+          <a class="nav-link" data-nav-link="packages" href="../packages/index.html">Packages</a>
+          <a class="nav-link" data-nav-link="portal" data-auth-link href="../portal/index.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page-stack">
+
+      <!-- Not logged in: redirect prompt -->
+      <div id="buy-auth-wall" style="display:none;">
+        <section class="panel detail-banner">
+          <div class="kicker">Sign In Required</div>
+          <h1 class="page-title">You need to be <span>signed in</span> to buy a package.</h1>
+        </section>
+        <section class="panel" style="max-width:480px;">
+          <p style="color:var(--text-2); margin-bottom:16px;">Create an investor account or sign in to continue with your purchase.</p>
+          <div class="button-row">
+            <a class="button primary" id="buy-signin-link" href="../portal/index.html">Sign In / Register</a>
+            <a class="button ghost" href="../packages/index.html">Back to Packages</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- Main buy flow -->
+      <div id="buy-main" style="display:none;">
+
+        <section class="panel detail-banner">
+          <a class="link-back" href="../packages/index.html">← Back to packages</a>
+          <div class="kicker">Purchase Package</div>
+          <h1 class="page-title" id="buy-title">Package <span>Purchase</span></h1>
+          <div class="detail-metrics" id="buy-metrics"></div>
+        </section>
+
+        <!-- Step 1: Choose units -->
+        <section class="panel" id="buy-step-units">
+          <div class="panel-head">
+            <div>
+              <strong>Step 1 of 3</strong>
+              <h2 class="panel-title">How many units do you want?</h2>
+              <p class="panel-subtext">Each unit costs the package amount. Your total will update below.</p>
+            </div>
+          </div>
+          <div style="max-width:380px;">
+            <div class="message-card premium-note" style="margin-top:14px;" id="buy-units-summary">You are purchasing 1 unit of this package.</div>
+            <button class="button primary" style="margin-top:16px;" id="buy-next-to-payment">Continue to Payment →</button>
+          </div>
+        </section>
+
+        <!-- Step 2: Bank transfer -->
+        <section class="panel" id="buy-step-payment" style="display:none;">
+          <div class="panel-head">
+            <div>
+              <strong>Step 2 of 3</strong>
+              <h2 class="panel-title">Transfer the exact amount</h2>
+              <p class="panel-subtext">Send your payment to the bank account below. Keep your receipt — you'll upload it next.</p>
+            </div>
+          </div>
+
+          <div class="message-card premium-note" id="buy-amount-reminder" style="margin-bottom:20px;"></div>
+
+          <div class="info-grid" id="buy-bank-details"></div>
+
+          <div class="button-row" style="margin-top:20px;">
+            <button class="button ghost" id="buy-back-to-units">← Change units</button>
+            <button class="button primary" id="buy-next-to-proof">I've sent the payment →</button>
+          </div>
+        </section>
+
+        <!-- Step 3: Confirm account number -->
+        <section class="panel" id="buy-step-proof" style="display:none;">
+          <div class="panel-head">
+            <div>
+              <strong>Step 3 of 3</strong>
+              <h2 class="panel-title">Confirm your sending account</h2>
+              <p class="panel-subtext">Enter the account number you used to send the payment. Our team will manually verify your transfer and activate your package.</p>
+            </div>
+          </div>
+
+          <div style="max-width:480px;">
+            <div class="field">
+              <label for="buy-sender-account">Account Number (Payment Sent From)</label>
+              <input id="buy-sender-account" type="text" placeholder="e.g. 0123456789" autocomplete="off">
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-3); margin-top:8px;">This is the account number from which you made the bank transfer — not the destination account.</p>
+
+            <div class="field" style="margin-top:16px;">
+              <label for="buy-proof-input">Payment Receipt / Screenshot <span style="color:var(--text-3); font-weight:400;">(optional for now)</span></label>
+              <input id="buy-proof-input" type="file" accept="image/*,application/pdf">
+            </div>
+            <div id="buy-feedback" class="feedback" style="margin-top:14px;"></div>
+            <div class="button-row" style="margin-top:16px;">
+              <button class="button ghost" id="buy-back-to-payment">← Back</button>
+              <button class="button primary" id="buy-submit-btn">Submit Purchase Request</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Success state -->
+        <section class="panel" id="buy-step-success" style="display:none;">
+          <div style="text-align:center; padding: 32px 0;">
+            <div style="font-size:2.8rem; margin-bottom:14px;">✓</div>
+            <h2 class="panel-title" style="margin-bottom:8px;">Request Submitted!</h2>
+            <p style="color:var(--text-2); max-width:420px; margin:0 auto 24px;">
+              Your investment request has been sent to operations. Once your payment is confirmed your package will go live and you'll see it in your portal.
+            </p>
+            <div class="button-row" style="justify-content:center;">
+              <a class="button primary" href="../portal/index.html">Go to Dashboard</a>
+              <a class="button ghost" href="../packages/index.html">Browse More Packages</a>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <p class="footer-note">
+      CGI Pakistan — secure package investment with operations-verified payment processing.
+    </p>
+  </div>
+</body>
+</html>
