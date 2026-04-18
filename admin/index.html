@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CGI Pakistan | Admin Console</title>
+  <meta name="description" content="Control investor approvals, monitor activity, review withdrawals, and manage capital inside the CGI Pakistan admin console.">
+  <link rel="icon" type="image/png" href="../assets/cgi-logo.png">
+  <link rel="apple-touch-icon" href="../assets/cgi-logo.png">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="admin">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="../index.html">
+        <img src="../assets/cgi-logo.png" alt="CGI logo">
+        <div>
+          <span class="brand-title">CGI Pakistan</span>
+          <span class="brand-subtitle">Canadian General Investments</span>
+        </div>
+      </a>
+      <div class="topbar-right">
+        <nav class="site-nav" aria-label="Primary">
+          <a class="nav-link" data-nav-link="home" href="../index.html">Home</a>
+          <a class="nav-link" data-nav-link="packages" href="../packages/index.html">Packages</a>
+          <a class="nav-link" data-nav-link="dashboard" href="../dashboard/index.html">Portal</a>
+          <a class="nav-link" data-nav-link="admin" href="index.html">Admin</a>
+          <a class="nav-link" data-nav-link="login" data-auth-link href="../login/index.html">Sign Up</a>
+        </nav>
+        <span class="mini-pill" data-profile-pill>Investor Access</span>
+        <span class="status-pill">Operations Console</span>
+      </div>
+    </header>
+
+    <main class="page-stack">
+      <section class="panel detail-banner">
+        <div class="kicker">Admin Console</div>
+        <h1 class="page-title">Control approvals, monitor activity, and <span>release withdrawals</span>.</h1>
+        <div class="detail-summary">
+          <p>
+            This operations console is built to make investor oversight clear and strong: approve package placements,
+            release withdrawals, track user activity, and manage available capital from one place.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Operations Snapshot</strong>
+            <h2 class="panel-title">Admin metrics</h2>
+            <p class="panel-subtext">
+              Keep investor identity, capital, approvals, and withdrawal queues visible before you take action.
+            </p>
+          </div>
+        </div>
+        <div class="stats-grid" id="admin-stats"></div>
+      </section>
+
+      <section class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Investor File</strong>
+              <h2 class="panel-title">Registered member profile</h2>
+              <p class="panel-subtext">
+                Review the investor identity that sits behind package requests and payout instructions.
+              </p>
+            </div>
+          </div>
+          <div id="admin-profile-summary"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Capital Control</strong>
+              <h2 class="panel-title">Approve capital and system actions</h2>
+              <p class="panel-subtext">
+                Add available investor capital, apply one day of earnings, or reset the environment when needed.
+              </p>
+            </div>
+          </div>
+
+          <form class="form-stack" id="admin-capital-form">
+            <div class="field">
+              <label for="admin-capital-amount">Capital Amount</label>
+              <input id="admin-capital-amount" name="amount" type="number" min="1" step="1" placeholder="50000">
+            </div>
+            <button class="button primary button-block" type="submit">Approve Capital</button>
+          </form>
+
+          <div class="button-row" style="margin-top: 18px;">
+            <button class="button secondary button-block" id="apply-profit-btn" type="button">Apply 1 Day Earnings</button>
+            <button class="button danger button-block" id="reset-portal-btn" type="button">Reset Portal</button>
+          </div>
+
+          <div id="admin-feedback" class="feedback"></div>
+        </section>
+      </section>
+
+      <section class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Investment Approval Queue</strong>
+              <h2 class="panel-title">Pending package placements</h2>
+              <p class="panel-subtext">
+                Review each capital request according to package amount and approve or decline it with one action.
+              </p>
+            </div>
+          </div>
+          <div id="admin-investment-requests"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Withdrawal Approval Queue</strong>
+              <h2 class="panel-title">Pending payout instructions</h2>
+              <p class="panel-subtext">
+                Release withdrawals once they are ready, or return them to available profit if review requires it.
+              </p>
+            </div>
+          </div>
+          <div id="admin-withdrawal-requests"></div>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Approved Holdings</strong>
+            <h2 class="panel-title">Live investor package positions</h2>
+            <p class="panel-subtext">
+              Use this view to confirm what has already gone live inside the investor account after approval.
+            </p>
+          </div>
+        </div>
+        <div class="info-grid" id="admin-holdings"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Activity Monitoring</strong>
+            <h2 class="panel-title">User and operations activity log</h2>
+            <p class="panel-subtext">
+              Package requests, approvals, capital updates, and withdrawals are captured here to support stronger admin checks.
+            </p>
+          </div>
+        </div>
+        <div id="admin-activity-feed"></div>
+      </section>
+    </main>
+
+    <p class="footer-note">
+      CGI Pakistan operations console centralizes investor approvals, capital control, and withdrawal release management.
+    </p>
+  </div>
+</body>
+</html>

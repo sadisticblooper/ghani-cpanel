@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CGI Pakistan | Investor Portal</title>
+  <meta name="description" content="Review approved capital, live holdings, request status, and investor activity inside the CGI Pakistan investor portal.">
+  <link rel="icon" type="image/png" href="../assets/cgi-logo.png">
+  <link rel="apple-touch-icon" href="../assets/cgi-logo.png">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="dashboard">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="../index.html">
+        <img src="../assets/cgi-logo.png" alt="CGI logo">
+        <div>
+          <span class="brand-title">CGI Pakistan</span>
+          <span class="brand-subtitle">Canadian General Investments</span>
+        </div>
+      </a>
+      <div class="topbar-right">
+        <nav class="site-nav" aria-label="Primary">
+          <a class="nav-link" data-nav-link="home" href="../index.html">Home</a>
+          <a class="nav-link" data-nav-link="packages" href="../packages/index.html">Packages</a>
+          <a class="nav-link" data-nav-link="dashboard" href="index.html">Portal</a>
+          <a class="nav-link" data-nav-link="admin" href="../admin/index.html">Admin</a>
+          <a class="nav-link" data-nav-link="login" data-auth-link href="../login/index.html">Sign Up</a>
+        </nav>
+        <span class="mini-pill" data-profile-pill>Investor Access</span>
+        <span class="status-pill">Investor Portal</span>
+      </div>
+    </header>
+
+    <main class="page-stack">
+      <section class="panel detail-banner">
+        <div class="kicker">Investor Portal</div>
+        <h1 class="page-title">A cleaner view of your <span>capital journey</span>.</h1>
+        <div class="detail-summary">
+          <p>
+            Track approved capital, live package performance, pending investment reviews, and withdrawal activity
+            through a modern portal built around investor clarity.
+          </p>
+        </div>
+        <div class="button-row" style="margin-top: 22px;">
+          <a class="button-link primary" href="../packages/index.html">Request Another Package</a>
+          <a class="button-link ghost" href="../admin/index.html">Open Admin Console</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Account Snapshot</strong>
+            <h2 class="panel-title">Live investor metrics</h2>
+            <p class="panel-subtext">
+              These values follow your approved capital, package growth, and request queue as operations activity changes.
+            </p>
+          </div>
+        </div>
+        <div class="stats-grid" id="dashboard-stats"></div>
+        <div id="dashboard-feedback" class="feedback"></div>
+      </section>
+
+      <section class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Investor Identity</strong>
+              <h2 class="panel-title">Profile and account details</h2>
+              <p class="panel-subtext">
+                Your registration profile stays connected to package requests, approvals, and withdrawal handling.
+              </p>
+            </div>
+          </div>
+          <div id="dashboard-profile-summary"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Investor Direction</strong>
+              <h2 class="panel-title">Next best actions</h2>
+              <p class="panel-subtext">
+                Move quickly between registration, package review, and admin visibility when needed.
+              </p>
+            </div>
+          </div>
+          <div class="feature-grid compact-grid">
+            <article class="feature-card compact-card">
+              <h3>Browse Packages</h3>
+              <p>Open any package page and submit a capital request according to the package amount.</p>
+              <a class="button-link ghost" href="../packages/index.html">Open Packages</a>
+            </article>
+            <article class="feature-card compact-card">
+              <h3>Review Admin Queue</h3>
+              <p>Operations teams can approve capital placement and withdrawals from the admin console.</p>
+              <a class="button-link ghost" href="../admin/index.html">Open Admin</a>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Approved Holdings</strong>
+            <h2 class="panel-title">Live package positions</h2>
+            <p class="panel-subtext">
+              Approved package placements appear here with capital, live profit, and withdrawal visibility.
+            </p>
+          </div>
+        </div>
+        <div class="info-grid" id="dashboard-holdings"></div>
+      </section>
+
+      <section class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Investment Requests</strong>
+              <h2 class="panel-title">Package instructions under review</h2>
+              <p class="panel-subtext">
+                Every submitted capital request stays visible from submission through approval or decline.
+              </p>
+            </div>
+          </div>
+          <div id="dashboard-investment-requests"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Withdrawal Requests</strong>
+              <h2 class="panel-title">Payout instructions and status</h2>
+              <p class="panel-subtext">
+                Withdrawal requests move into the queue once available profit reaches the package threshold.
+              </p>
+            </div>
+          </div>
+          <div id="dashboard-withdrawal-requests"></div>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Recent Activity</strong>
+            <h2 class="panel-title">Investor and admin movement</h2>
+            <p class="panel-subtext">
+              Registration, capital allocation, package approvals, and payout handling are captured here in sequence.
+            </p>
+          </div>
+        </div>
+        <div id="dashboard-activity-feed"></div>
+      </section>
+    </main>
+
+    <p class="footer-note">
+      CGI Pakistan investor portal keeps package activity, approvals, and withdrawals visible from one account view.
+    </p>
+  </div>
+</body>
+</html>

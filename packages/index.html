@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CGI Pakistan | Capital Packages</title>
+  <meta name="description" content="Review CGI Pakistan capital packages, projected returns, and package-by-package investor access.">
+  <link rel="icon" type="image/png" href="../assets/cgi-logo.png">
+  <link rel="apple-touch-icon" href="../assets/cgi-logo.png">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="packages">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="../index.html">
+        <img src="../assets/cgi-logo.png" alt="CGI logo">
+        <div>
+          <span class="brand-title">CGI Pakistan</span>
+          <span class="brand-subtitle">Canadian General Investments</span>
+        </div>
+      </a>
+      <div class="topbar-right">
+        <nav class="site-nav" aria-label="Primary">
+          <a class="nav-link" data-nav-link="home" href="../index.html">Home</a>
+          <a class="nav-link" data-nav-link="packages" href="index.html">Packages</a>
+          <a class="nav-link" data-nav-link="dashboard" href="../dashboard/index.html">Portal</a>
+          <a class="nav-link" data-nav-link="admin" href="../admin/index.html">Admin</a>
+          <a class="nav-link" data-nav-link="login" data-auth-link href="../login/index.html">Sign Up</a>
+        </nav>
+        <span class="mini-pill" data-profile-pill>Investor Access</span>
+        <span class="status-pill">Capital Packages Open</span>
+      </div>
+    </header>
+
+    <main class="page-stack">
+      <section class="panel detail-banner">
+        <div class="kicker">Capital Packages</div>
+        <h1 class="page-title">Package values designed for <span>clear capital placement</span>.</h1>
+        <div class="detail-summary">
+          <p>
+            CGI Pakistan packages give investors a direct route to request capital placement according to package amount,
+            projected return ratio, and operations-led approval before activation.
+          </p>
+        </div>
+        <div class="button-row" style="margin-top: 22px;">
+          <a class="button-link primary" href="../login/index.html">Register Investor Account</a>
+          <a class="button-link secondary" href="../dashboard/index.html">Open Investor Portal</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Capital Position</strong>
+            <h2 class="panel-title">Investor package readiness</h2>
+            <p class="panel-subtext">
+              These figures keep package availability, approved capital, and pending review activity visible while you move between packages.
+            </p>
+          </div>
+        </div>
+        <div class="stats-grid" id="packages-stats"></div>
+        <div id="packages-feedback" class="feedback"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Placement Process</strong>
+            <h2 class="panel-title">How package approvals move</h2>
+            <p class="panel-subtext">
+              Investors request capital according to package value and operations approves the placement before it becomes active.
+            </p>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <div class="icon-box">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 5h16v14H4zM8 9h8M8 13h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Investor Request</h3>
+            <p>Choose the package amount and submit the number of units you want operations to review.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon-box">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7 12l3 3 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <h3>Admin Approval</h3>
+            <p>The admin console reviews investor activity, confirms capital, and approves the placement into the chosen package.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon-box">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 18h12M8 15V9m4 6V6m4 9v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Live Tracking</h3>
+            <p>Approved capital appears in the portal with profit visibility, request status, and package-level withdrawal routing.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>All Packages</strong>
+            <h2 class="panel-title">Open any package and request allocation</h2>
+            <p class="panel-subtext">
+              Each package page shows the amount per unit, projected monthly return, current active units, and request history.
+            </p>
+          </div>
+        </div>
+        <div class="package-grid" id="packages-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <strong>Activity Feed</strong>
+            <h2 class="panel-title">Recent package movement</h2>
+            <p class="panel-subtext">
+              Package requests, approvals, and withdrawals are recorded here as operations activity evolves.
+            </p>
+          </div>
+        </div>
+        <div id="packages-activity-feed"></div>
+      </section>
+    </main>
+
+    <p class="footer-note">
+      CGI Pakistan package access connects investor registration, package requests, and approval control into one portal.
+    </p>
+  </div>
+</body>
+</html>
