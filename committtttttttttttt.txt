@@ -2,3 +2,6 @@ git remote set-url origin https://github.com/sadisticblooper/ghani-cpanel.git
 git add .
 git commit -m "fix repo and sync"
 git push -f origin main
+
+
+xyz
