@@ -34,7 +34,7 @@
     </header>
 
     <main class="page-stack">
-      <section class="panel detail-banner">
+      <section class="panel detail-banner" id="listing-banner">
         <div class="kicker">Capital Packages</div>
         <h1 class="page-title">Package values designed for <span>clear capital placement</span>.</h1>
         <div class="detail-summary">
@@ -49,7 +49,15 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel detail-banner" id="detail-banner" style="display: none;">
+        <a class="link-back" href="index.html">Back to package list</a>
+        <div class="kicker">Package Access</div>
+        <h1 class="page-title" id="detail-title">Package Detail</h1>
+        <div class="detail-summary" id="detail-summary"></div>
+        <div class="detail-metrics" id="detail-metrics"></div>
+      </section>
+
+      <section class="panel" id="listing-position">
         <div class="panel-head">
           <div>
             <strong>Capital Position</strong>
@@ -63,7 +71,54 @@
         <div id="packages-feedback" class="feedback"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="detail-actions" style="display: none;">
+        <div class="panel-head">
+          <div>
+            <strong>Investor Action</strong>
+            <h2 class="panel-title">Submit package capital and withdrawal instructions</h2>
+            <p class="panel-subtext">
+              Capital requests are submitted according to package amount and routed to operations for approval before activation.
+            </p>
+          </div>
+          <div class="panel-note">
+            Package requests use the package amount per unit. Withdrawals enter the admin queue once profit is available.
+          </div>
+        </div>
+
+        <div class="stats-grid" id="detail-stats"></div>
+
+        <div class="dashboard-grid">
+          <section class="control-card strong-card">
+            <strong>Package Capital Request</strong>
+            <p class="detail-text">
+              Choose how many units of this package you want to place. The request total will match the package amount multiplied by units.
+            </p>
+            <form class="form-stack" id="invest-form">
+              <div class="field">
+                <label for="invest-units">Units</label>
+                <input id="invest-units" name="units" type="number" min="1" step="1" value="1">
+              </div>
+              <div class="helper-text" id="invest-estimate"></div>
+              <button class="button primary button-block" type="submit">Submit Investment Request</button>
+            </form>
+          </section>
+
+          <section class="control-card strong-card">
+            <strong>Withdrawal Instruction</strong>
+            <p class="detail-text">
+              Once this package has available profit, you can submit a withdrawal request and track it through operations review.
+            </p>
+            <div class="button-row" style="margin-top: 18px;">
+              <button class="button secondary button-block" id="request-withdrawal-btn" type="button">Submit Withdrawal Request</button>
+              <a class="button-link ghost button-block" href="../dashboard/index.html">Open Investor Portal</a>
+            </div>
+          </section>
+        </div>
+
+        <div id="detail-feedback" class="feedback"></div>
+      </section>
+
+      <section class="panel" id="listing-process">
         <div class="panel-head">
           <div>
             <strong>Placement Process</strong>
@@ -105,7 +160,20 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="detail-position" style="display: none;">
+        <div class="panel-head">
+          <div>
+            <strong>Current Position</strong>
+            <h2 class="panel-title">Capital and profit inside this package</h2>
+            <p class="panel-subtext">
+              View approved units, available profit, and any withdrawal amount already moving through the queue.
+            </p>
+          </div>
+        </div>
+        <div id="package-position"></div>
+      </section>
+
+      <section class="panel" id="listing-grid-section">
         <div class="panel-head">
           <div>
             <strong>All Packages</strong>
@@ -118,7 +186,48 @@
         <div class="package-grid" id="packages-grid"></div>
       </section>
 
-      <section class="panel">
+      <section class="dashboard-grid" id="detail-requests-grid" style="display: none;">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Investment Requests</strong>
+              <h2 class="panel-title">Requests for this package</h2>
+              <p class="panel-subtext">
+                Submitted capital requests for this package stay visible here through each review stage.
+              </p>
+            </div>
+          </div>
+          <div id="detail-investment-requests"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <strong>Withdrawal Requests</strong>
+              <h2 class="panel-title">Payout instructions for this package</h2>
+              <p class="panel-subtext">
+                Once submitted, package withdrawals move into admin review and remain visible here until resolved.
+              </p>
+            </div>
+          </div>
+          <div id="detail-withdrawal-requests"></div>
+        </section>
+      </section>
+
+      <section class="panel" id="detail-routes" style="display: none;">
+        <div class="panel-head">
+          <div>
+            <strong>Move Between Packages</strong>
+            <h2 class="panel-title">Compare other package routes</h2>
+            <p class="panel-subtext">
+              Switch between packages while keeping the same investor identity, capital balance, and activity history.
+            </p>
+          </div>
+        </div>
+        <div class="route-grid" id="route-grid"></div>
+      </section>
+
+      <section class="panel" id="listing-activity">
         <div class="panel-head">
           <div>
             <strong>Activity Feed</strong>
@@ -129,6 +238,19 @@
           </div>
         </div>
         <div id="packages-activity-feed"></div>
+      </section>
+
+      <section class="panel" id="detail-activity" style="display: none;">
+        <div class="panel-head">
+          <div>
+            <strong>Recent Activity</strong>
+            <h2 class="panel-title">Investor and admin movement</h2>
+            <p class="panel-subtext">
+              Package approvals, live profit growth, and withdrawal handling appear here as account activity develops.
+            </p>
+          </div>
+        </div>
+        <div id="activity-feed"></div>
       </section>
     </main>
 

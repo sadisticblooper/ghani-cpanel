@@ -1,7 +1,6 @@
 (() => {
   const getPathDepth = () => {
     const path = window.location.pathname;
-    if (path.includes("/package/")) return "../../";
     if (path.includes("/admin/") || path.includes("/dashboard/") || path.includes("/login/") || path.includes("/packages/")) return "../";
     return "./";
   };
@@ -232,7 +231,7 @@
 
   const getPackage = (packageId) => PACKAGES.find((item) => item.id === Number(packageId));
   const getPackageByAmount = (amount) => PACKAGES.find((item) => item.amount === Number(amount));
-  const packageHref = (pkg) => `${PATH_PREFIX}package/?id=${pkg.id}`;
+  const packageHref = (pkg) => `${PATH_PREFIX}packages/?id=${pkg.id}`;
   const isLoggedIn = (state) => Boolean(state.profile && state.profile.isLoggedIn && state.profile.username);
   const profileName = (state) => (isLoggedIn(state) ? state.profile.username : "Investor Access");
   const memberLabel = (state) => (state.profile.memberId ? state.profile.memberId : "Registration Pending");
@@ -974,35 +973,65 @@
     }
   };
 
+  const togglePackageViews = (showDetail) => {
+    const detailEls = ["detail-banner", "detail-actions", "detail-position", "detail-requests-grid", "detail-routes", "detail-activity"];
+    const listEls = ["listing-banner", "listing-position", "listing-process", "listing-grid-section", "listing-activity"];
+
+    detailEls.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = showDetail ? "" : "none";
+    });
+    listEls.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = showDetail ? "none" : "";
+    });
+  };
+
   const refreshPackagesPage = (feedbackMessage, tone) => {
     const state = getLiveState();
     const totals = summary(state);
+    const params = new URLSearchParams(window.location.search);
+    const packageId = params.get("id");
+
+    if (packageId) {
+      togglePackageViews(true);
+      return;
+    }
+
+    togglePackageViews(false);
     updateTopbarState(state);
 
-    renderStats(document.getElementById("packages-stats"), [
-      {
-        label: "Investor",
-        value: profileName(state),
-        help: isLoggedIn(state) ? "Investor access is active." : "Sign up to request package allocations."
-      },
-      {
-        label: "Available Capital",
-        value: formatMoney(state.availableBalance),
-        help: "Approved capital waiting for package placement."
-      },
-      {
-        label: "Pending Capital",
-        value: formatMoney(totals.pendingInvestmentAmount),
-        help: "Capital already submitted and awaiting approval."
-      },
-      {
-        label: "Approved Capital",
-        value: formatMoney(totals.invested),
-        help: "Capital already placed into approved packages."
-      }
-    ]);
+    const statsContainer = document.getElementById("packages-stats");
+    if (statsContainer) {
+      renderStats(statsContainer, [
+        {
+          label: "Investor",
+          value: profileName(state),
+          help: isLoggedIn(state) ? "Investor access is active." : "Sign up to request package allocations."
+        },
+        {
+          label: "Available Capital",
+          value: formatMoney(state.availableBalance),
+          help: "Approved capital waiting for package placement."
+        },
+        {
+          label: "Pending Capital",
+          value: formatMoney(totals.pendingInvestmentAmount),
+          help: "Capital already submitted and awaiting approval."
+        },
+        {
+          label: "Approved Capital",
+          value: formatMoney(totals.invested),
+          help: "Capital already placed into approved packages."
+        }
+      ]);
+    }
 
-    renderPackageGrid(state, document.getElementById("packages-grid"));
+    const gridContainer = document.getElementById("packages-grid");
+    if (gridContainer) {
+      renderPackageGrid(state, gridContainer);
+    }
+
     renderActivity(state, document.getElementById("packages-activity-feed"));
 
     if (feedbackMessage) {
@@ -1442,12 +1471,14 @@
   };
 
   window.addEventListener("DOMContentLoaded", () => {
+    console.log("=== DOMContentLoaded fired ===");
     const pageType = document.body.dataset.page;
+    console.log("pageType:", pageType);
 
     if (pageType === "package") {
       const packageId = Number(document.body.dataset.packageId);
       if (packageId) {
-        window.location.href = `${PATH_PREFIX}package/?id=${packageId}`;
+        window.location.href = `${PATH_PREFIX}packages/?id=${packageId}`;
       }
       return;
     }
@@ -1458,8 +1489,18 @@
     }
 
     if (pageType === "packages") {
-      refreshPackagesPage();
-      startLiveRefresh(() => refreshPackagesPage());
+      const params = new URLSearchParams(window.location.search);
+      const packageId = params.get("id");
+      console.log("packages handler: packageId =", packageId);
+      if (packageId) {
+        const pkgId = parseInt(packageId, 10);
+        refreshPackage(pkgId);
+        bindPackageControls(pkgId);
+        startLiveRefresh(() => refreshPackage(pkgId));
+      } else {
+        refreshPackagesPage();
+        startLiveRefresh(() => refreshPackagesPage());
+      }
     }
 
     if (pageType === "login") {
@@ -1470,13 +1511,6 @@
     if (pageType === "dashboard") {
       refreshDashboard();
       startLiveRefresh(() => refreshDashboard());
-    }
-
-    if (pageType === "package-query") {
-      const pkg = resolvePackageFromQuery();
-      refreshPackage(pkg.id);
-      bindPackageControls(pkg.id);
-      startLiveRefresh(() => refreshPackage(pkg.id));
     }
 
     if (pageType === "admin") {
