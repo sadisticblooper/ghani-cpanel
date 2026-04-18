@@ -14,6 +14,7 @@
   <script defer src="assets/app.js"></script>
 </head>
 <body data-page="home">
+  <img class="ui-bg" src="assets/ui-bg.svg" alt="">
   <div class="site-shell">
     <header class="topbar">
       <a class="brand" href="index.html">
@@ -27,12 +28,8 @@
         <nav class="site-nav" aria-label="Primary">
           <a class="nav-link" data-nav-link="home" href="index.html">Home</a>
           <a class="nav-link" data-nav-link="packages" href="packages/index.html">Packages</a>
-          <a class="nav-link" data-nav-link="dashboard" href="dashboard/index.html">Portal</a>
-          <a class="nav-link" data-nav-link="admin" href="admin/index.html">Admin</a>
-          <a class="nav-link" data-nav-link="login" data-auth-link href="login/index.html">Sign Up</a>
+          <a class="nav-link" data-nav-link="portal" data-auth-link href="portal/index.html">Dashboard</a>
         </nav>
-        <span class="mini-pill" data-profile-pill>Investor Access</span>
-        <span class="status-pill">Investor Onboarding Open</span>
       </div>
     </header>
 
@@ -55,9 +52,9 @@
           </div>
 
           <div class="button-row" style="margin-top: 8px;">
-            <a class="button-link primary" href="login/index.html">Create Investor Account</a>
+            <a class="button-link primary" href="portal/index.html">Create Investor Account</a>
             <a class="button-link secondary" href="packages/index.html">Explore Packages</a>
-            <a class="button-link ghost" href="dashboard/index.html">Open Investor Portal</a>
+            <a class="button-link ghost" href="portal/index.html">Open Investor Portal</a>
           </div>
 
           <div class="message-card premium-note">
@@ -72,8 +69,7 @@
 
         <div class="hero-visual">
           <div class="illustration-shell">
-            <div class="illustration-orb orb-one"></div>
-            <div class="illustration-orb orb-two"></div>
+            <div class="hero-gradient-bg"></div>
             <div class="illustration-card primary">
               <span>Capital Placement</span>
               <strong>Investor package allocations</strong>
@@ -82,12 +78,6 @@
             <div class="illustration-card secondary">
               <span>Withdrawal Control</span>
               <strong>Admin-approved payout flow</strong>
-            </div>
-            <div class="illustration-bars">
-              <div><span style="height: 38%"></span></div>
-              <div><span style="height: 58%"></span></div>
-              <div><span style="height: 74%"></span></div>
-              <div><span style="height: 92%"></span></div>
             </div>
             <div class="illustration-chip chip-top">4% Monthly</div>
             <div class="illustration-chip chip-bottom">Admin Review Active</div>
@@ -98,36 +88,23 @@
       <section class="panel section-block">
         <div class="panel-head">
           <div>
-            <strong>Launch Snapshot</strong>
-            <h2 class="panel-title">Investor readiness at a glance</h2>
+            <strong>Launch Snapshot + Investor Experience</strong>
+            <h2 class="panel-title">Built for disciplined onboarding</h2>
             <p class="panel-subtext">
-              Registration, package approvals, capital availability, and operational queues update together inside one shared portal.
+              Registration, package approvals, capital availability - every step is designed to feel premium, clear, and accountable.
             </p>
           </div>
         </div>
         <div class="stats-grid" id="home-stats"></div>
-        <div id="home-feedback" class="feedback"></div>
-      </section>
-
-      <section class="panel section-block">
-        <div class="panel-head">
-          <div>
-            <strong>Investor Experience</strong>
-            <h2 class="panel-title">Built for disciplined onboarding</h2>
-            <p class="panel-subtext">
-              Every step is designed to feel premium, clear, and accountable from the moment an investor signs up.
-            </p>
-          </div>
-        </div>
-        <div class="feature-grid">
+        <div class="feature-grid" style="margin-top: 20px;">
           <article class="feature-card">
             <div class="icon-box">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 3l7 3v5c0 4.5-2.8 8.4-7 10-4.2-1.6-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.7"/>
               </svg>
             </div>
-            <h3>Verified Investor Registration</h3>
-            <p>Username, phone number, email address, and a dedicated investor login all move through one premium onboarding path.</p>
+            <h3>Verified Registration</h3>
+            <p>Username, phone, email, and investor login through premium onboarding.</p>
           </article>
           <article class="feature-card">
             <div class="icon-box">
@@ -135,8 +112,8 @@
                 <path d="M4 18h16M6 15l3-4 3 2 5-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
-            <h3>Package-Based Capital Requests</h3>
-            <p>Investors request capital placement according to package value, with approvals tracked clearly before any holding goes live.</p>
+            <h3>Package Requests</h3>
+            <p>Capital placement by package value with tracked approvals.</p>
           </article>
           <article class="feature-card">
             <div class="icon-box">
@@ -144,10 +121,11 @@
                 <path d="M5 7h14M5 12h14M5 17h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
               </svg>
             </div>
-            <h3>Operations Command Oversight</h3>
-            <p>Admin controls keep investor activity, approvals, and withdrawals visible in a stronger review flow before execution.</p>
+            <h3>Admin Oversight</h3>
+            <p>Activity, approvals, and withdrawals in one review flow.</p>
           </article>
         </div>
+        <div id="home-feedback" class="feedback"></div>
       </section>
 
       <section class="panel section-block" id="packages">
@@ -156,7 +134,7 @@
             <strong>Featured Packages</strong>
             <h2 class="panel-title">Choose the package that fits your capital plan</h2>
             <p class="panel-subtext">
-              Investors can request allocation directly from the package amount and track approval progress through the portal.
+              Investors can request allocation from the package amount and track approval progress through the portal.
             </p>
           </div>
           <div class="panel-note">
@@ -194,23 +172,10 @@
           </article>
         </div>
       </section>
-
-      <section class="panel section-block">
-        <div class="panel-head">
-          <div>
-            <strong>Recent Activity</strong>
-            <h2 class="panel-title">Investor and operations movement</h2>
-            <p class="panel-subtext">
-              Registration updates, capital approvals, live package activity, and withdrawals appear here in sequence.
-            </p>
-          </div>
-        </div>
-        <div id="home-activity-feed"></div>
-      </section>
     </main>
 
     <p class="footer-note">
-      CGI Pakistan investor access is opening with structured onboarding, package approvals, and stronger operations oversight.
+      CGI Pakistan investor access is opening with structured onboarding, package approvals and stronger operations oversight.
     </p>
   </div>
 </body>

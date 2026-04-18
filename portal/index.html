@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CGI Pakistan | Portal</title>
+  <meta name="description" content="CGI Pakistan investor portal — sign up, track holdings, manage withdrawals, and review admin approvals.">
+  <link rel="icon" type="image/png" href="../assets/cgi-logo.png">
+  <link rel="apple-touch-icon" href="../assets/cgi-logo.png">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script defer src="../assets/app.js"></script>
+</head>
+<body data-page="portal">
+  <img class="ui-bg" src="../assets/ui-bg.svg" alt="">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="../index.html">
+        <img src="../assets/cgi-logo.png" alt="CGI logo">
+        <div>
+          <span class="brand-title">CGI Pakistan</span>
+          <span class="brand-subtitle">Canadian General Investments</span>
+        </div>
+      </a>
+      <div class="topbar-right">
+        <nav class="site-nav" aria-label="Primary">
+          <a class="nav-link" data-nav-link="home" href="../index.html">Home</a>
+          <a class="nav-link" data-nav-link="packages" href="../packages/index.html">Packages</a>
+          <a class="nav-link is-active" data-nav-link="portal" data-auth-link href="index.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page-stack">
+
+      <!-- ── NOT LOGGED IN: Sign-up form ── -->
+      <div id="portal-auth">
+        <section class="panel detail-banner">
+          <div class="kicker">Investor Registration</div>
+          <h1 class="page-title">Open your CGI Pakistan <span>investor account</span>.</h1>
+          <div class="detail-summary">
+            <p>Create your investor account to request package placements, track live profit, and manage withdrawals through one portal.</p>
+          </div>
+        </section>
+
+        <section class="auth-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <strong>Sign Up</strong>
+                <h2 class="panel-title">Investor account details</h2>
+                <p class="panel-subtext">Registration links your identity to package requests, live holdings, and withdrawal processing.</p>
+              </div>
+            </div>
+            <form class="form-stack" id="auth-form">
+              <div class="field-grid">
+                <div class="field">
+                  <label for="username">Username</label>
+                  <input id="username" name="username" type="text" placeholder="Investor username" autocomplete="username">
+                </div>
+                <div class="field">
+                  <label for="phone">Phone Number</label>
+                  <input id="phone" name="phone" type="tel" placeholder="+92 300 0000000" autocomplete="tel">
+                </div>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="email">Email Address</label>
+                  <input id="email" name="email" type="email" placeholder="investor@email.com" autocomplete="email">
+                </div>
+                <div class="field">
+                  <label for="password">Password</label>
+                  <input id="password" name="password" type="password" placeholder="Create password" autocomplete="new-password">
+                </div>
+              </div>
+              <button class="button primary button-block" id="auth-submit-btn" type="submit">Create Investor Account</button>
+            </form>
+            <div id="portal-auth-feedback" class="feedback"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <strong>Investor Profile</strong>
+                <h2 class="panel-title">Registration summary</h2>
+                <p class="panel-subtext">Once registered, your account details and member identity stay visible here for quick review.</p>
+              </div>
+            </div>
+            <div id="portal-profile-summary-auth"></div>
+            <div class="message-card premium-note" style="margin-top: 22px;">
+              <strong>Investor Access Promise</strong>
+              <p>CGI Pakistan is shaping registration around cleaner onboarding, stronger package approvals, and account-level visibility for serious investors.</p>
+            </div>
+          </section>
+        </section>
+      </div>
+
+      <!-- ── LOGGED IN: Dashboard ── -->
+      <div id="portal-main" style="display:none;">
+
+        <div class="dashboard-flat">
+          <!-- Header Row -->
+          <div class="dash-row dash-header">
+            <div class="dash-welcome">
+              <span class="dash-title">Investor Portal</span>
+              <span class="dash-user">Welcome, <strong id="portal-welcome-name">Investor</strong></span>
+            </div>
+            <div class="dash-header-actions">
+              <a class="dash-btn" href="../packages/index.html">Browse Packages</a>
+              <button class="dash-btn dash-btn-ghost" id="logout-btn">Sign Out</button>
+            </div>
+          </div>
+
+          <!-- Metrics Row -->
+          <div class="dash-row dash-metrics">
+            <div class="dash-metric">
+              <span class="dash-metric-label">Total Capital</span>
+              <span class="dash-metric-value" id="metric-total-capital">PKR 0</span>
+            </div>
+            <div class="dash-metric">
+              <span class="dash-metric-label">Total Profit</span>
+              <span class="dash-metric-value profit" id="metric-total-profit">PKR 0</span>
+            </div>
+            <div class="dash-metric">
+              <span class="dash-metric-label">Available</span>
+              <span class="dash-metric-value" id="metric-available">PKR 0</span>
+            </div>
+            <div class="dash-metric">
+              <span class="dash-metric-label">Pending</span>
+              <span class="dash-metric-value pending" id="metric-pending">0</span>
+            </div>
+          </div>
+
+          <!-- Holdings Row -->
+          <div class="dash-row">
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>Holdings</span>
+                <span class="dash-section-label">Active packages</span>
+              </div>
+              <div class="dash-table-wrap">
+                <table class="dash-table" id="portal-holdings"></table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Requests Row -->
+          <div class="dash-row dash-split">
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>Investment Requests</span>
+              </div>
+              <div class="dash-table-wrap">
+                <table class="dash-table" id="portal-investment-requests"></table>
+              </div>
+            </div>
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>Withdrawal Requests</span>
+              </div>
+              <div class="dash-table-wrap">
+                <table class="dash-table" id="portal-withdrawal-requests"></table>
+              </div>
+            </div>
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>Pending Approvals</span>
+              </div>
+              <div class="dash-table-wrap">
+                <table class="dash-table" id="portal-admin-investment-queue"></table>
+                <table class="dash-table" id="portal-admin-withdrawal-queue"></table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions Row -->
+          <div class="dash-row dash-actions-row">
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>Add Capital</span>
+              </div>
+              <form class="dash-form" id="portal-capital-form">
+                <input class="dash-input" id="portal-capital-amount" name="amount" type="number" placeholder="50000">
+                <button class="dash-btn" type="submit">Add</button>
+              </form>
+            </div>
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>System</span>
+              </div>
+              <div class="dash-form-btns">
+                <button class="dash-btn dash-btn-sm" id="portal-apply-profit-btn">Apply Profit</button>
+                <button class="dash-btn dash-btn-sm dash-btn-danger" id="portal-reset-btn">Reset</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity Row -->
+          <div class="dash-row">
+            <div class="dash-section">
+              <div class="dash-section-header">
+                <span>Recent Activity</span>
+              </div>
+              <div class="dash-activity" id="portal-activity-feed"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <p class="footer-note">
+      CGI Pakistan investor portal — registration, approvals, and withdrawal management in one place.
+    </p>
+  </div>
+</body>
+</html>

@@ -11,6 +11,7 @@
   <script defer src="../assets/app.js"></script>
 </head>
 <body data-page="packages">
+  <img class="ui-bg" src="../assets/ui-bg.svg" alt="">
   <div class="site-shell">
     <header class="topbar">
       <a class="brand" href="../index.html">
@@ -24,28 +25,40 @@
         <nav class="site-nav" aria-label="Primary">
           <a class="nav-link" data-nav-link="home" href="../index.html">Home</a>
           <a class="nav-link" data-nav-link="packages" href="index.html">Packages</a>
-          <a class="nav-link" data-nav-link="dashboard" href="../dashboard/index.html">Portal</a>
-          <a class="nav-link" data-nav-link="admin" href="../admin/index.html">Admin</a>
-          <a class="nav-link" data-nav-link="login" data-auth-link href="../login/index.html">Sign Up</a>
+          <a class="nav-link" data-nav-link="portal" data-auth-link href="../portal/index.html">Dashboard</a>
         </nav>
-        <span class="mini-pill" data-profile-pill>Investor Access</span>
-        <span class="status-pill">Capital Packages Open</span>
+        <div class="nav-pinned" id="packages-stats"></div>
       </div>
     </header>
 
     <main class="page-stack">
-      <section class="panel detail-banner" id="listing-banner">
+      <section class="panel highlight-panel" id="listing-banner">
         <div class="kicker">Capital Packages</div>
         <h1 class="page-title">Package values designed for <span>clear capital placement</span>.</h1>
-        <div class="detail-summary">
-          <p>
-            CGI Pakistan packages give investors a direct route to request capital placement according to package amount,
-            projected return ratio, and operations-led approval before activation.
-          </p>
-        </div>
-        <div class="button-row" style="margin-top: 22px;">
-          <a class="button-link primary" href="../login/index.html">Register Investor Account</a>
-          <a class="button-link secondary" href="../dashboard/index.html">Open Investor Portal</a>
+        <div class="highlight-process">
+          <div class="highlight-step">
+            <span class="highlight-number">1</span>
+            <div>
+              <strong>Investor Request</strong>
+              <p>Submit package capital for review</p>
+            </div>
+          </div>
+          <div class="highlight-arrow">→</div>
+          <div class="highlight-step">
+            <span class="highlight-number">2</span>
+            <div>
+              <strong>Admin Approval</strong>
+              <p>Operations confirms placement</p>
+            </div>
+          </div>
+          <div class="highlight-arrow">→</div>
+          <div class="highlight-step">
+            <span class="highlight-number">3</span>
+            <div>
+              <strong>Live Tracking</strong>
+              <p>Profit visible in portal</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -57,21 +70,33 @@
         <div class="detail-metrics" id="detail-metrics"></div>
       </section>
 
-      <section class="panel" id="listing-position">
+      <section class="panel" id="listing-grid-section">
         <div class="panel-head">
           <div>
-            <strong>Capital Position</strong>
-            <h2 class="panel-title">Investor package readiness</h2>
+            <strong>All Packages</strong>
+            <h2 class="panel-title">Open any package and request allocation</h2>
             <p class="panel-subtext">
-              These figures keep package availability, approved capital, and pending review activity visible while you move between packages.
+              Each package page shows the amount per unit, projected monthly return, current active units, and request history.
             </p>
           </div>
         </div>
-        <div class="stats-grid" id="packages-stats"></div>
-        <div id="packages-feedback" class="feedback"></div>
+        <div class="package-grid" id="packages-grid"></div>
       </section>
 
-      <section class="panel" id="detail-actions" style="display: none;">
+      <section class="panel" id="detail-position" style="display: none;">
+        <div class="panel-head">
+          <div>
+            <strong>Current Position</strong>
+            <h2 class="panel-title">Capital and profit inside this package</h2>
+            <p class="panel-subtext">
+              View approved units, available profit, and any withdrawal amount already moving through the queue.
+            </p>
+          </div>
+        </div>
+        <div id="package-position"></div>
+      </section>
+
+      <section class="panel" id="listing-actions" style="display: none;">
         <div class="panel-head">
           <div>
             <strong>Investor Action</strong>
@@ -110,80 +135,12 @@
             </p>
             <div class="button-row" style="margin-top: 18px;">
               <button class="button secondary button-block" id="request-withdrawal-btn" type="button">Submit Withdrawal Request</button>
-              <a class="button-link ghost button-block" href="../dashboard/index.html">Open Investor Portal</a>
+              <a class="button-link ghost button-block" href="../portal/index.html">Open Investor Portal</a>
             </div>
           </section>
         </div>
 
         <div id="detail-feedback" class="feedback"></div>
-      </section>
-
-      <section class="panel" id="listing-process">
-        <div class="panel-head">
-          <div>
-            <strong>Placement Process</strong>
-            <h2 class="panel-title">How package approvals move</h2>
-            <p class="panel-subtext">
-              Investors request capital according to package value and operations approves the placement before it becomes active.
-            </p>
-          </div>
-        </div>
-        <div class="feature-grid">
-          <article class="feature-card">
-            <div class="icon-box">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 5h16v14H4zM8 9h8M8 13h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <h3>Investor Request</h3>
-            <p>Choose the package amount and submit the number of units you want operations to review.</p>
-          </article>
-          <article class="feature-card">
-            <div class="icon-box">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M7 12l3 3 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
-              </svg>
-            </div>
-            <h3>Admin Approval</h3>
-            <p>The admin console reviews investor activity, confirms capital, and approves the placement into the chosen package.</p>
-          </article>
-          <article class="feature-card">
-            <div class="icon-box">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 18h12M8 15V9m4 6V6m4 9v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <h3>Live Tracking</h3>
-            <p>Approved capital appears in the portal with profit visibility, request status, and package-level withdrawal routing.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel" id="detail-position" style="display: none;">
-        <div class="panel-head">
-          <div>
-            <strong>Current Position</strong>
-            <h2 class="panel-title">Capital and profit inside this package</h2>
-            <p class="panel-subtext">
-              View approved units, available profit, and any withdrawal amount already moving through the queue.
-            </p>
-          </div>
-        </div>
-        <div id="package-position"></div>
-      </section>
-
-      <section class="panel" id="listing-grid-section">
-        <div class="panel-head">
-          <div>
-            <strong>All Packages</strong>
-            <h2 class="panel-title">Open any package and request allocation</h2>
-            <p class="panel-subtext">
-              Each package page shows the amount per unit, projected monthly return, current active units, and request history.
-            </p>
-          </div>
-        </div>
-        <div class="package-grid" id="packages-grid"></div>
       </section>
 
       <section class="dashboard-grid" id="detail-requests-grid" style="display: none;">

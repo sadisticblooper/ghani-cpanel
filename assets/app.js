@@ -1,7 +1,7 @@
 (() => {
   const getPathDepth = () => {
     const path = window.location.pathname;
-    if (path.includes("/admin/") || path.includes("/dashboard/") || path.includes("/login/") || path.includes("/packages/")) return "../";
+    if (path.includes("/admin/") || path.includes("/dashboard/") || path.includes("/login/") || path.includes("/packages/") || path.includes("/portal/")) return "../";
     return "./";
   };
   const PATH_PREFIX = getPathDepth();
@@ -373,13 +373,14 @@
     `;
   };
 
-  const renderActivity = (state, container) => {
+  const renderActivity = (state, container, limit) => {
     if (!container) {
       return;
     }
+    const items = limit ? state.activities.slice(0, limit) : state.activities;
     container.innerHTML = `
       <div class="activity-list">
-        ${state.activities
+        ${items
           .map(
             (item) => `
               <article class="activity-item tone-${escapeHtml(item.tone)}">
@@ -391,6 +392,38 @@
           .join("")}
       </div>
     `;
+  };
+
+  // Flat list for dashboard - show max 10 items with expand button
+  const renderActivityFlat = (container, state) => {
+    if (!container) {
+      return;
+    }
+
+    const items = state.activities || [];
+    if (!items.length) {
+      container.innerHTML = '<div style="color: var(--text-3);">No recent activity</div>';
+      return;
+    }
+
+    const expanded = container.dataset.expanded === "true";
+    const limit = 10;
+    const displayed = expanded ? items : items.slice(0, limit);
+    const hasMore = items.length > limit;
+
+    container.innerHTML = displayed
+      .map((item) => {
+        const tone = item.tone || "neutral";
+        return `
+        <div class="dash-activity-item tone-${escapeHtml(tone)}">
+          <span>${escapeHtml(item.at)}</span>
+          <strong>${escapeHtml(item.message)}</strong>
+        </div>
+        `;
+      })
+      .join("") + (hasMore
+        ? `<button class="dash-btn dash-btn-sm dash-activity-more" data-show-more="true" style="margin-top: 8px;">${expanded ? "Show less" : "Show all " + items.length}</button>`
+        : "");
   };
 
   const statusLabel = (status) => {
@@ -534,19 +567,51 @@
       .join("");
   };
 
+  // Flat table format for dashboard
+  const renderHoldingsFlat = (container, state) => {
+    if (!container) {
+      return;
+    }
+
+    const items = activeHoldings(state);
+    if (!items.length) {
+      container.innerHTML = '<tr><td colspan="4" style="color: var(--text-3);">No active packages</td></tr>';
+      return;
+    }
+
+    container.innerHTML = `<thead><tr><th>Package</th><th>Capital</th><th>Units</th><th>Profit</th></tr></thead><tbody>` +
+      items
+        .map(
+          ({ pkg, holding }) => `
+          <tr>
+            <td>${escapeHtml(pkg.code)}</td>
+            <td>${escapeHtml(formatMoney(holding.invested))}</td>
+            <td>${escapeHtml(String(holding.units))}</td>
+            <td class="profit-cell">${escapeHtml(formatMoney(holding.profit))}</td>
+          </tr>
+        `
+        )
+        .join("") + "</tbody>";
+  };
+
   const renderPackageGrid = (state, container, options = {}) => {
     if (!container) {
       return;
     }
 
-    const items = options.limit ? PACKAGES.slice(0, options.limit) : PACKAGES;
-    container.innerHTML = items
-      .map((pkg) => {
-        const holding = getHolding(state, pkg.id);
-        const pendingCount = state.investmentRequests.filter(
-          (item) => item.packageId === pkg.id && item.status === "pending"
-        ).length;
-        return `
+    const DEFAULT_VISIBLE = 3;
+    const allItems = options.limit ? PACKAGES.slice(0, options.limit) : PACKAGES;
+    let expanded = container.dataset.expanded === "true";
+
+    const renderCards = () => {
+      const items = expanded ? allItems : allItems.slice(0, DEFAULT_VISIBLE);
+      const cards = items
+        .map((pkg) => {
+          const holding = getHolding(state, pkg.id);
+          const pendingCount = state.investmentRequests.filter(
+            (item) => item.packageId === pkg.id && item.status === "pending"
+          ).length;
+          return `
           <article class="package-card">
             <div class="package-topline">
               <span class="package-index">${escapeHtml(pkg.code)}</span>
@@ -572,13 +637,35 @@
                 <dd>${escapeHtml(formatMoney(holding.profit))}</dd>
               </div>
             </dl>
-            <div class="button-row" style="margin-top: 18px;">
+            <div class="button-row" style="margin-top: 14px;">
               <a class="button-link primary" href="${escapeHtml(packageHref(pkg))}">Review Package</a>
             </div>
           </article>
         `;
-      })
-      .join("");
+        })
+        .join("");
+
+      const showMoreBtn = allItems.length > DEFAULT_VISIBLE
+        ? `<div style="grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 4px;">
+            <button class="button ghost" id="pkg-toggle-btn" type="button">
+              ${expanded ? `Show fewer` : `Show all ${allItems.length} packages`}
+            </button>
+          </div>`
+        : "";
+
+      container.innerHTML = cards + showMoreBtn;
+
+      const toggleBtn = container.querySelector("#pkg-toggle-btn");
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          expanded = !expanded;
+          container.dataset.expanded = String(expanded);
+          renderCards();
+        });
+      }
+    };
+
+    renderCards();
   };
 
   const renderRouteGrid = (container, state) => {
@@ -605,9 +692,10 @@
       home: "home",
       packages: "packages",
       "package-query": "packages",
-      dashboard: "dashboard",
-      login: "login",
-      admin: "admin"
+      dashboard: "portal",
+      login: "portal",
+      admin: "portal",
+      portal: "portal"
     };
     const activeKey = activeMap[document.body.dataset.page] || "";
 
@@ -620,8 +708,8 @@
     });
 
     document.querySelectorAll("[data-auth-link]").forEach((node) => {
-      node.textContent = isLoggedIn(state) ? "Investor Portal" : "Sign Up";
-      node.setAttribute("href", isLoggedIn(state) ? `${PATH_PREFIX}dashboard/index.html` : `${PATH_PREFIX}login/index.html`);
+      node.textContent = isLoggedIn(state) ? "Dashboard" : "Sign Up";
+      node.setAttribute("href", `${PATH_PREFIX}portal/`);
     });
 
     document.querySelectorAll("[data-member-name]").forEach((node) => {
@@ -990,41 +1078,18 @@
   const refreshPackagesPage = (feedbackMessage, tone) => {
     const state = getLiveState();
     const totals = summary(state);
-    const params = new URLSearchParams(window.location.search);
-    const packageId = params.get("id");
-
-    if (packageId) {
-      togglePackageViews(true);
-      return;
-    }
 
     togglePackageViews(false);
     updateTopbarState(state);
 
     const statsContainer = document.getElementById("packages-stats");
     if (statsContainer) {
-      renderStats(statsContainer, [
-        {
-          label: "Investor",
-          value: profileName(state),
-          help: isLoggedIn(state) ? "Investor access is active." : "Sign up to request package allocations."
-        },
-        {
-          label: "Available Capital",
-          value: formatMoney(state.availableBalance),
-          help: "Approved capital waiting for package placement."
-        },
-        {
-          label: "Pending Capital",
-          value: formatMoney(totals.pendingInvestmentAmount),
-          help: "Capital already submitted and awaiting approval."
-        },
-        {
-          label: "Approved Capital",
-          value: formatMoney(totals.invested),
-          help: "Capital already placed into approved packages."
-        }
-      ]);
+      statsContainer.innerHTML = `
+        <div class="pinned-stat">
+          <div class="pinned-stat-row">Investor - ${profileName(state)}</div>
+          <div class="pinned-stat-row">Credit - ${formatMoney(state.availableBalance)}</div>
+        </div>
+      `;
     }
 
     const gridContainer = document.getElementById("packages-grid");
@@ -1032,7 +1097,7 @@
       renderPackageGrid(state, gridContainer);
     }
 
-    renderActivity(state, document.getElementById("packages-activity-feed"));
+    renderActivity(state, document.getElementById("packages-activity-feed"), 5);
 
     if (feedbackMessage) {
       setFeedback(document.getElementById("packages-feedback"), feedbackMessage, tone);
@@ -1164,6 +1229,7 @@
     const packageRequests = state.investmentRequests.filter((item) => item.packageId === pkg.id);
     const packageWithdrawals = state.withdrawalRequests.filter((item) => item.packageId === pkg.id);
 
+    togglePackageViews(true);
     updateTopbarState(state);
     document.title = `CGI Pakistan | ${pkg.code}`;
 
@@ -1470,10 +1536,232 @@
     }, 1000);
   };
 
+  // ── Portal page: combined signup + dashboard + admin ──────────────────────
+  const refreshPortal = (feedbackMessage, tone) => {
+    const state = getLiveState();
+    const totals = summary(state);
+    updateTopbarState(state);
+
+    const authSection = document.getElementById("portal-auth");
+    const mainSection = document.getElementById("portal-main");
+
+    if (!authSection || !mainSection) return;
+
+    const loggedIn = isLoggedIn(state);
+    authSection.style.display = loggedIn ? "none" : "";
+    mainSection.style.display = loggedIn ? "" : "none";
+
+    if (!loggedIn) {
+      // Pre-fill form fields if partial data exists
+      const fill = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+      fill("username", state.profile.username);
+      fill("phone", state.profile.phone);
+      fill("email", state.profile.email);
+      fill("password", state.profile.password);
+
+      renderSummaryList(document.getElementById("portal-profile-summary-auth"), [
+        { label: "Investor Name", value: state.profile.username || "Not registered yet" },
+        { label: "Phone Number", value: state.profile.phone || "Awaiting registration" },
+        { label: "Email Address", value: state.profile.email || "Awaiting registration" },
+        { label: "Member ID", value: memberLabel(state) },
+        { label: "Status", value: "Registration Open" }
+      ]);
+
+      if (feedbackMessage) {
+        setFeedback(document.getElementById("portal-auth-feedback"), feedbackMessage, tone);
+      } else {
+        setFeedback(
+          document.getElementById("portal-auth-feedback"),
+          "Complete investor registration to access package placements, profit tracking, and withdrawal management.",
+          "warning"
+        );
+      }
+      return;
+    }
+
+    // Logged in — render full dashboard + admin
+    const welcomeName = document.getElementById("portal-welcome-name");
+    if (welcomeName) welcomeName.textContent = state.profile.username;
+
+    // Update flat dashboard metrics
+    const mTotalCapital = document.getElementById("metric-total-capital");
+    const mTotalProfit = document.getElementById("metric-total-profit");
+    const mAvailable = document.getElementById("metric-available");
+    const mPending = document.getElementById("metric-pending");
+
+    if (mTotalCapital) mTotalCapital.textContent = formatMoney(totals.invested);
+    if (mTotalProfit) mTotalProfit.textContent = formatMoney(totals.profit);
+    if (mAvailable) mAvailable.textContent = formatMoney(state.availableBalance);
+    if (mPending) mPending.textContent = String(totals.pendingInvestmentCount + totals.pendingWithdrawalCount);
+
+    renderStats(document.getElementById("portal-stats"), [
+      {
+        label: "Available Capital",
+        value: formatMoney(state.availableBalance),
+        help: "Capital ready for new package requests or approved withdrawals."
+      },
+      {
+        label: "Approved Capital",
+        value: formatMoney(totals.invested),
+        help: `${pluralise(totals.units, "approved unit")} across active package placements.`
+      },
+      {
+        label: "Live Profit",
+        value: formatMoney(totals.profit),
+        help: "Profit accruing on approved holdings in real time."
+      },
+      {
+        label: "Pending Reviews",
+        value: String(totals.pendingInvestmentCount + totals.pendingWithdrawalCount),
+        help: "Investment and withdrawal instructions awaiting operations review."
+      }
+    ]);
+
+    renderSummaryList(document.getElementById("portal-profile-summary"), [
+      { label: "Investor Name", value: state.profile.username || "Registration Open" },
+      { label: "Member ID", value: memberLabel(state) },
+      { label: "Phone Number", value: state.profile.phone || "—" },
+      { label: "Email Address", value: state.profile.email || "—" },
+      { label: "Joined", value: state.profile.joinedAt ? stamp(state.profile.joinedAt) : "—" }
+    ]);
+
+renderHoldingsFlat(document.getElementById("portal-holdings"), state);
+
+    // Investor view — all requests with status (card format)
+    renderRequestList(
+      document.getElementById("portal-investment-requests"),
+      state.investmentRequests,
+      "investment",
+      {
+        emptyTitle: "No package requests yet",
+        emptyText: "Choose a package and submit a capital request to begin."
+      }
+    );
+    renderRequestList(
+      document.getElementById("portal-withdrawal-requests"),
+      state.withdrawalRequests,
+      "withdrawal",
+      {
+        emptyTitle: "No withdrawal requests yet",
+        emptyText: "Withdrawal instructions appear here once available profit is requested."
+      }
+    );
+
+    // Admin approval queues — pending only, with approve/decline buttons
+    renderRequestList(
+      document.getElementById("portal-admin-investment-queue"),
+      state.investmentRequests.filter((item) => item.status === "pending"),
+      "investment",
+      {
+        admin: true,
+        emptyTitle: "Investment queue is clear",
+        emptyText: "Pending package requests will appear here when submitted."
+      }
+    );
+    renderRequestList(
+      document.getElementById("portal-admin-withdrawal-queue"),
+      state.withdrawalRequests.filter((item) => item.status === "pending"),
+      "withdrawal",
+      {
+        admin: true,
+        emptyTitle: "Withdrawal queue is clear",
+        emptyText: "Pending withdrawal requests will appear here when submitted."
+      }
+    );
+
+    renderActivityFlat(document.getElementById("portal-activity-feed"), state, 10);
+
+    if (feedbackMessage) {
+      setFeedback(document.getElementById("portal-feedback"), feedbackMessage, tone);
+    }
+  };
+
+  const bindPortalControls = () => {
+    // Sign-up form
+    const authForm = document.getElementById("auth-form");
+    if (authForm) {
+      authForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(authForm);
+        const result = saveProfile({
+          username: data.get("username"),
+          phone: data.get("phone"),
+          email: data.get("email"),
+          password: data.get("password")
+        });
+        refreshPortal(result.message, result.tone);
+      });
+    }
+
+    // Logout
+    const logoutBtn = document.getElementById("logout-btn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", () => {
+        const result = logoutProfile();
+        refreshPortal(result.message, result.tone);
+      });
+    }
+
+    // Admin: approve capital
+    const capitalForm = document.getElementById("portal-capital-form");
+    if (capitalForm) {
+      capitalForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const amount = Number(new FormData(capitalForm).get("amount"));
+        const result = addApprovedCapital(amount);
+        refreshPortal(result.message, result.tone);
+        if (result.ok) capitalForm.reset();
+      });
+    }
+
+    // Admin: apply 1 day profit
+    const applyProfitBtn = document.getElementById("portal-apply-profit-btn");
+    if (applyProfitBtn) {
+      applyProfitBtn.addEventListener("click", () => {
+        const result = applyDailyProfit();
+        refreshPortal(result.message, result.tone);
+      });
+    }
+
+    // Admin: reset portal
+    const resetBtn = document.getElementById("portal-reset-btn");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        const confirmed = window.confirm("Reset investor registration, capital approvals, package activity, and withdrawal history?");
+        if (!confirmed) return;
+        const result = resetPortal();
+        refreshPortal(result.message, result.tone);
+      });
+    }
+
+    // Admin: approve/decline investment & withdrawal via data-admin-action
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-admin-action]");
+      if (!trigger) return;
+      const action = trigger.dataset.adminAction;
+      const requestId = trigger.dataset.requestId;
+      let result = null;
+      if (action === "approve-investment") result = approveInvestmentRequest(requestId);
+      else if (action === "decline-investment") result = declineInvestmentRequest(requestId);
+      else if (action === "approve-withdrawal") result = approveWithdrawalRequest(requestId);
+      else if (action === "decline-withdrawal") result = declineWithdrawalRequest(requestId);
+      if (result) refreshPortal(result.message, result.tone);
+    });
+
+    // Activity show more
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-show-more]");
+      if (!trigger) return;
+      const activityContainer = document.getElementById("portal-activity-feed");
+      if (activityContainer) {
+        activityContainer.dataset.expanded = activityContainer.dataset.expanded === "true" ? "false" : "true";
+        refreshPortal();
+      }
+    });
+  };
+
   window.addEventListener("DOMContentLoaded", () => {
-    console.log("=== DOMContentLoaded fired ===");
     const pageType = document.body.dataset.page;
-    console.log("pageType:", pageType);
 
     if (pageType === "package") {
       const packageId = Number(document.body.dataset.packageId);
@@ -1491,7 +1779,6 @@
     if (pageType === "packages") {
       const params = new URLSearchParams(window.location.search);
       const packageId = params.get("id");
-      console.log("packages handler: packageId =", packageId);
       if (packageId) {
         const pkgId = parseInt(packageId, 10);
         refreshPackage(pkgId);
@@ -1503,20 +1790,23 @@
       }
     }
 
+    if (pageType === "portal") {
+      refreshPortal();
+      bindPortalControls();
+      startLiveRefresh(() => refreshPortal());
+    }
+
+    // Legacy pages kept for backward compat in case someone has them bookmarked
     if (pageType === "login") {
-      refreshLogin();
-      bindAuthControls();
+      window.location.href = `${PATH_PREFIX}portal/`;
     }
 
     if (pageType === "dashboard") {
-      refreshDashboard();
-      startLiveRefresh(() => refreshDashboard());
+      window.location.href = `${PATH_PREFIX}portal/`;
     }
 
     if (pageType === "admin") {
-      refreshAdmin();
-      bindAdminControls();
-      startLiveRefresh(() => refreshAdmin());
+      window.location.href = `${PATH_PREFIX}portal/`;
     }
   });
 })();
