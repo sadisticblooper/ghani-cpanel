@@ -8,8 +8,6 @@
 
   const API_BASE = "https://alsininvestment.com/api";
 
-  // ── Token: localStorage (JWT only, not credentials — safe to persist, expires in 7d)
-  // ── State: in-memory only, fetched fresh from API on every page load ──────────
   const TOKEN_KEY = "cgi-token";
 
   const getToken = () => localStorage.getItem(TOKEN_KEY);
@@ -20,7 +18,6 @@
   const getCachedState = () => _cachedState ? normaliseState(_cachedState) : null;
   const setCachedState = (state) => { _cachedState = JSON.parse(JSON.stringify(state)); };
   const clearCachedState = () => { _cachedState = null; };
-  // ────────────────────────────────────────────────────────────────────────────
 
   const apiHeaders = () => ({
     "Content-Type": "application/json",
@@ -963,10 +960,8 @@ const showAllPackagesModal = (state) => {
       );
     });
 
-    // Immediately flush state to API (don't wait for debounce — user may navigate away)
     pushStateToAPI(result.state);
 
-    // Also push to backend investment_requests table
     if (getToken()) {
       fetch(`${API_BASE}/investments`, {
         method: "POST",
@@ -1625,12 +1620,11 @@ const showAllPackagesModal = (state) => {
   };
 
   const bindPackageControls = (packageId) => {
-    // The invest form on the detail page still works for logged-in users who navigate here directly
     const form = document.getElementById("invest-form");
     if (form) {
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        // Redirect to buy page instead
+      
         window.location.href = `${PATH_PREFIX}buy/?id=${packageId}`;
       });
     }
@@ -2070,7 +2064,7 @@ const showAllPackagesModal = (state) => {
       updateUnitsSummary();
     }
 
-    // Step 1 → Step 2
+    // form Step 1 to stp 2
     const nextToPayment = document.getElementById("buy-next-to-payment");
     if (nextToPayment) {
       nextToPayment.addEventListener("click", () => {
@@ -2096,19 +2090,19 @@ const showAllPackagesModal = (state) => {
       });
     }
 
-    // Step 2 → back to Step 1
+  
     const backToUnits = document.getElementById("buy-back-to-units");
     if (backToUnits) backToUnits.addEventListener("click", () => showStep("buy-step-units"));
 
-    // Step 2 → Step 3
+    
     const nextToProof = document.getElementById("buy-next-to-proof");
     if (nextToProof) nextToProof.addEventListener("click", () => showStep("buy-step-proof"));
 
-    // Step 3 → back to Step 2
+
     const backToPayment = document.getElementById("buy-back-to-payment");
     if (backToPayment) backToPayment.addEventListener("click", () => showStep("buy-step-payment"));
 
-    // Proof image — placeholder, base64 captured but not validated
+    // ugh just here as placeholder cuz no info was shared about where to store them 
     const proofInput = document.getElementById("buy-proof-input");
     if (proofInput) {
       proofInput.addEventListener("change", (e) => {
@@ -2120,7 +2114,7 @@ const showAllPackagesModal = (state) => {
       });
     }
 
-    // Submit
+    
     const submitBtn = document.getElementById("buy-submit-btn");
     const feedbackEl = document.getElementById("buy-feedback");
     if (submitBtn) {
@@ -2139,7 +2133,6 @@ const showAllPackagesModal = (state) => {
         const result = submitInvestmentRequest(pkg.id, currentUnits, senderAccountNumber, proofBase64);
 
         if (result.ok) {
-          // Wait for state to actually reach the server before navigating
           try { await pushStateToAPI(result.state); } catch {}
           showStep("buy-step-success");
         } else {
@@ -2152,12 +2145,12 @@ const showAllPackagesModal = (state) => {
   };
 
   window.addEventListener("DOMContentLoaded", async () => {
-    // Flush any pending state on page unload
+    
     window.addEventListener("beforeunload", () => {
       if (pushTimer) {
         clearTimeout(pushTimer);
         const state = getLiveState();
-        // Use sendBeacon for reliability on unload
+        
         const token = getToken();
         if (token) {
           navigator.sendBeacon(
@@ -2197,7 +2190,6 @@ const showAllPackagesModal = (state) => {
         bindPackageControls(pkgId);
         startLiveRefresh(() => refreshPackage(pkgId));
 
-        // If ?buy=1, scroll straight to the invest form and flash it
         if (params.get("buy") === "1") {
           setTimeout(() => {
             const investSection = document.getElementById("listing-actions");
