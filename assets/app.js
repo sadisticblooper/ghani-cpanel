@@ -195,6 +195,9 @@
       packageId: Number(safe.packageId) || 0,
       amount: Number(safe.amount) || 0,
       status: typeof safe.status === "string" ? safe.status : "pending",
+      bankName: typeof safe.bankName === "string" ? safe.bankName : "",
+      accountTitle: typeof safe.accountTitle === "string" ? safe.accountTitle : "",
+      accountNumber: typeof safe.accountNumber === "string" ? safe.accountNumber : "",
       createdAt: Number.isFinite(safe.createdAt) ? safe.createdAt : Date.now(),
       reviewedAt: Number.isFinite(safe.reviewedAt) ? safe.reviewedAt : null
     };
@@ -941,9 +944,34 @@ const showAllPackagesModal = (state) => {
 
     const total = pkg.amount * parsedUnits;
 
+    // Await the API call first so we get the server-assigned ID.
+    // This ensures the ID stored in user_state matches the DB record,
+    // which is required for admin approval/decline to update the portal status.
+    let investmentId = createId("INV"); // fallback if API unavailable
+    if (getToken()) {
+      try {
+        const invRes = await fetch(`${API_BASE}/investments`, {
+          method: "POST",
+          headers: apiHeaders(),
+          body: JSON.stringify({
+            packageId: pkg.id,
+            packageCode: pkg.code,
+            units: parsedUnits,
+            amount: total,
+            senderAccountNumber: senderAccountNumber.trim(),
+            proofOfPayment: proofBase64 || null
+          })
+        });
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          if (invData.id) investmentId = invData.id;
+        }
+      } catch {}
+    }
+
     const result = updateState((draft) => {
       draft.investmentRequests.unshift({
-        id: createId("INV"),
+        id: investmentId,
         packageId: pkg.id,
         units: parsedUnits,
         amount: total,
@@ -961,21 +989,6 @@ const showAllPackagesModal = (state) => {
     });
 
     pushStateToAPI(result.state);
-
-    if (getToken()) {
-      fetch(`${API_BASE}/investments`, {
-        method: "POST",
-        headers: apiHeaders(),
-        body: JSON.stringify({
-          packageId: pkg.id,
-          packageCode: pkg.code,
-          units: parsedUnits,
-          amount: total,
-          senderAccountNumber: senderAccountNumber.trim(),
-          proofOfPayment: proofBase64 || null
-        })
-      }).catch(() => {});
-    }
 
     return {
       ok: true,
@@ -1095,6 +1108,9 @@ const showAllPackagesModal = (state) => {
           packageId: pkg.id,
           amount,
           status: "pending",
+          bankName,
+          accountTitle,
+          accountNumber,
           createdAt: Date.now(),
           reviewedAt: null
         });
