@@ -922,7 +922,7 @@ const showAllPackagesModal = (state) => {
     };
   };
 
-  const submitInvestmentRequest = (packageId, units, senderAccountNumber, proofBase64 = null) => {
+  const submitInvestmentRequest = async (packageId, units, senderAccountNumber, proofBase64 = null) => {
     const pkg = getPackage(packageId);
     const parsedUnits = Number(units);
 
