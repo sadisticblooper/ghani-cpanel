@@ -336,8 +336,9 @@ app.patch("/api/admin/investments/:id", authMiddleware, async (req, res) => {
     [newStatus, Date.now(), req.params.id]
   );
 
+  const reviewedAt = Date.now();
+
   if (action === "approve") {
-    const now = Date.now();
     const [stateRows] = await pool.query("SELECT state_data FROM user_state WHERE user_id = ?", [inv.user_id]);
     let state = stateRows.length ? JSON.parse(stateRows[0].state_data) : {};
 
@@ -347,14 +348,14 @@ app.patch("/api/admin/investments/:id", authMiddleware, async (req, res) => {
     }
     state.holdings[inv.package_id].units += inv.units;
     state.holdings[inv.package_id].invested += parseFloat(inv.amount);
-    state.holdings[inv.package_id].approvedAt = now;
+    state.holdings[inv.package_id].approvedAt = reviewedAt;
 
     if (!state.investmentRequests) state.investmentRequests = [];
     const reqIdx = state.investmentRequests.findIndex(r => r.id === inv.id);
     if (reqIdx >= 0) {
       state.investmentRequests[reqIdx].status = "approved";
-      state.investmentRequests[reqIdx].approvedAt = now;
-      state.investmentRequests[reqIdx].reviewedAt = now;
+      state.investmentRequests[reqIdx].approvedAt = reviewedAt;
+      state.investmentRequests[reqIdx].reviewedAt = reviewedAt;
     }
 
     if (!state.activities) state.activities = [];
@@ -362,7 +363,7 @@ app.patch("/api/admin/investments/:id", authMiddleware, async (req, res) => {
       tone: "success",
       message: `${inv.package_code} was approved for PKR ${inv.amount}.`,
       at: new Date().toLocaleString("en-PK"),
-      createdAt: now
+      createdAt: reviewedAt
     });
 
     const stateJson = JSON.stringify(state);
@@ -370,9 +371,35 @@ app.patch("/api/admin/investments/:id", authMiddleware, async (req, res) => {
       "INSERT INTO user_state (user_id, state_data) VALUES (?, ?) ON DUPLICATE KEY UPDATE state_data = ?",
       [inv.user_id, stateJson, stateJson]
     );
+  } else {
+    // Decline: also update the request status in user state so portal reflects it
+    const [stateRows] = await pool.query("SELECT state_data FROM user_state WHERE user_id = ?", [inv.user_id]);
+    if (stateRows.length) {
+      try {
+        const state = JSON.parse(stateRows[0].state_data);
+        if (!state.investmentRequests) state.investmentRequests = [];
+        const reqIdx = state.investmentRequests.findIndex(r => r.id === inv.id);
+        if (reqIdx >= 0) {
+          state.investmentRequests[reqIdx].status = "declined";
+          state.investmentRequests[reqIdx].reviewedAt = reviewedAt;
+        }
+        if (!state.activities) state.activities = [];
+        state.activities.unshift({
+          tone: "warning",
+          message: `${inv.package_code} investment request was declined by operations.`,
+          at: new Date().toLocaleString("en-PK"),
+          createdAt: reviewedAt
+        });
+        const stateJson = JSON.stringify(state);
+        await pool.query(
+          "INSERT INTO user_state (user_id, state_data) VALUES (?, ?) ON DUPLICATE KEY UPDATE state_data = ?",
+          [inv.user_id, stateJson, stateJson]
+        );
+      } catch {}
+    }
   }
 
-  res.json({ message: `Investment ${newStatus}` });
+  res.json({ message: `Investment ${newStatus}`, reviewedAt });
 });
 
 
