@@ -372,7 +372,7 @@ app.patch("/api/admin/investments/:id", authMiddleware, async (req, res) => {
       [inv.user_id, stateJson, stateJson]
     );
   } else {
-    // Decline: also update the request status in user state so portal reflects it
+
     const [stateRows] = await pool.query("SELECT state_data FROM user_state WHERE user_id = ?", [inv.user_id]);
     if (stateRows.length) {
       try {
