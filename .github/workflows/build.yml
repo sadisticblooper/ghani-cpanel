@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build and Package
 
 on:
   push:
@@ -6,27 +6,23 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - run: npm install
+
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+
+      - run: zip -r ghani-cpanel-encrypted.zip dist/
+
+      - uses: actions/upload-artifact@v4
         with:
-          path: dist/
-      - uses: actions/deploy-pages@v5
-        id: deployment
+          name: ghani-cpanel-encrypted
+          path: ghani-cpanel-encrypted.zip
