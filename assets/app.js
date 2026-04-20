@@ -2146,7 +2146,7 @@ const showAllPackagesModal = (state) => {
         submitBtn.disabled = true;
         submitBtn.textContent = "Saving...";
 
-        const result = submitInvestmentRequest(pkg.id, currentUnits, senderAccountNumber, proofBase64);
+        const result = await submitInvestmentRequest(pkg.id, currentUnits, senderAccountNumber, proofBase64);
 
         if (result.ok) {
           try { await pushStateToAPI(result.state); } catch {}
